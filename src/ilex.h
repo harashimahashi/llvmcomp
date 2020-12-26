@@ -9,8 +9,8 @@ namespace lexer {
         AND = 256, BASIC, BREAK, REPEAT, ELSE, EQ,
         FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
         NUM, OR, TEMP, TRUE, WHILE, UNTIL, TO, 
-        DOWNTO, ELSEIF, FOR, IDENT, DEIDENT, DELIM,
-        DECL
+        DOWNTO, FOR, IDENT, DEIDENT, DELIM,
+        DECL, RETURN
     };
 
     class Token {
@@ -42,7 +42,7 @@ namespace lexer {
         Word(std::string, int);
 
         std::string lexeme_;
-        static const std::unique_ptr<Word> And, Or, eq, ne, le, ge, minus, True, False, temp;
+        static const std::unique_ptr<Word> And, Or, eq, ne, le, ge, delim, minus, True, False, temp;
 
     };
 
@@ -52,6 +52,7 @@ namespace lexer {
         std::unordered_map<std::string, Word> words_;
         static inline unsigned line_ = 1;
         unsigned ident_ = 0;
+        unsigned new_ident_ = ident_;
         std::stringstream source_;
 
         void reserve(Word);

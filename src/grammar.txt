@@ -1,0 +1,60 @@
+program -> fun_stmts
+fun_stmts -> fun_stmts fun_stmt 
+	| fun_stmt
+fun_stmt -> fun_def 
+	| fun_call
+	|
+fun_call -> ID(args_seq_opt)
+args_seq_opt -> args_seq
+	| 
+args_seq -> args_seq, bool
+	| bool
+fun_def -> DECL ID(param_seq_opt) IDENT stmts DEIDENT
+param_seq_opt -> param_seq
+	|
+param_seq -> param_seq, ID
+	| ID
+stmts -> stmts stmt
+	|
+stmt -> loc = expr
+	| if_stmt
+	| while_stmt
+	| repeat_until_stmt
+	| for_stmt
+	| fun_call
+	| BREAK
+	| RETURN bool ->
+if_stmt -> IF bool -> IDENT stmts DEIDENT
+	| IF bool -> IDENT stmts DEIDENT elif_stmts
+while_stmt -> WHILE bool -> IDENT stmts DEIDENT
+repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool ->
+for_stmt -> FOR bool TO bool -> IDENT stmts DEIDENT
+	| FOR bool DOWNTO bool -> IDENT stmts DEIDENT
+loc -> loc[bool]
+	| ID
+bool -> bool || join
+	| join
+join -> join && equality
+	| equality
+equality -> equality == rel
+	| equality != rel
+	| rel
+rel -> expr < expr
+	| expr <= expr
+	| expr >= expr
+	| expr > expr
+	| expr
+expr -> expr + term
+	| expr - term
+	| term
+term -> term * unary
+	| term / unary
+	| unary
+unary -> !unary
+	| -unary
+	| factor
+factor -> (bool)
+	| loc
+	| NUM
+	| TRUE
+	| FALSE

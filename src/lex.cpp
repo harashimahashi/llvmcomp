@@ -24,27 +24,28 @@ namespace lexer {
 
     Token::Token(int t) noexcept : tag_{ t } {}
     Token::~Token() = default;
-    Token::operator bool() noexcept {
-        return static_cast<int>(tag_);
-    }
     Token::operator int() noexcept {
-        return static_cast<int>(tag_);
+        return tag_cast(tag_);
+    }
+    Token::operator bool() noexcept {
+        return (int)(*this);
     }
 
     Num::Num(double v) noexcept : Token{ tag_cast(Tag::NUM) }, val_{ v } {}
     
     Word::Word(std::string s, int tag) : Token{ tag }, lexeme_{ s } {} 
     const std::unique_ptr<Word> 
-        Word::And{ new Word("&&", tag_cast(Tag::AND)) },
-        Word::Or{ new Word("||", tag_cast(Tag::OR)) },
-        Word::eq{ new Word("==", tag_cast(Tag::EQ)) }, 
-        Word::ne{ new Word("!=", tag_cast(Tag::NE)) }, 
-        Word::le{ new Word("<=", tag_cast(Tag::LE)) }, 
-        Word::ge{ new Word(">=", tag_cast(Tag::GE)) }, 
-        Word::minus{ new Word("minus", tag_cast(Tag::MINUS)) }, 
-        Word::True{ new Word("true", tag_cast(Tag::TRUE)) }, 
-        Word::False{ new Word("false", tag_cast(Tag::FALSE)) }, 
-        Word::temp{ new Word("t", tag_cast(Tag::TEMP)) };
+        Word::And{ new Word{ "&&", tag_cast(Tag::AND) } },
+        Word::Or{ new Word{ "||", tag_cast(Tag::OR) } },
+        Word::eq{ new Word{ "==", tag_cast(Tag::EQ) } }, 
+        Word::ne{ new Word{ "!=", tag_cast(Tag::NE) } }, 
+        Word::le{ new Word{ "<=", tag_cast(Tag::LE) } }, 
+        Word::ge{ new Word{ ">=", tag_cast(Tag::GE) } }, 
+        Word::delim { new Word{ "->", tag_cast(Tag::DELIM) } },
+        Word::minus{ new Word{ "minus", tag_cast(Tag::MINUS) } }, 
+        Word::True{ new Word{ "true", tag_cast(Tag::TRUE) } }, 
+        Word::False{ new Word{ "false", tag_cast(Tag::FALSE) } }, 
+        Word::temp{ new Word{ "t", tag_cast(Tag::TEMP) } };
 
     void Lexer::reserve(Word w) {
 
@@ -52,6 +53,7 @@ namespace lexer {
     }
 
     void Lexer::readch() {
+
         peek_ = source_.get();
     }
 
@@ -70,7 +72,6 @@ namespace lexer {
         words_.reserve(13);
 
         reserve(Word{ "if", tag_cast(Tag::IF) });
-        reserve(Word{ "elseif", tag_cast(Tag::ELSEIF) });
         reserve(Word{ "else", tag_cast(Tag::ELSE) });
         reserve(Word{ "while", tag_cast(Tag::WHILE) });
         reserve(Word{ "repeat", tag_cast(Tag::REPEAT) });
@@ -80,14 +81,20 @@ namespace lexer {
         reserve(Word{ "downto", tag_cast(Tag::DOWNTO) });
         reserve(Word{ "break", tag_cast(Tag::BREAK) });
         reserve(Word{ "fun", tag_cast(Tag::DECL) });
+        reserve(Word{ "return", tag_cast(Tag::RETURN) });
         reserve(*Word::True); reserve(*Word::False);
 
         readch();
     }
 
-    Token Lexer::scan(){
+    Token Lexer::scan() {
 
-        for(;; readch()){
+        if(new_ident_ < ident_) {
+            --ident_;
+            return Token{ tag_cast(Tag::DEIDENT) };
+        }
+
+        for(;; readch()) {
 
             if(peek_ == std::char_traits<char>::eof()) return Token{ 0 };
             if(peek_ == ' ' || peek_ == '\t') continue;
@@ -99,17 +106,17 @@ namespace lexer {
             case '\n':
                 {   
                     ++line_;
-                    unsigned cnt{ 0 };
-                    for(readch(); peek_ == '\t'; readch()) ++cnt;
+                    new_ident_ = 0;
+                    for(; readch(), peek_ == '\t';) ++new_ident_;
 
-                    if(cnt == ident_) return scan();
+                    if(new_ident_ == ident_) return scan();
                     else {
-                        if(cnt < ident_) {
-                            ident_ = cnt;
+                        if(new_ident_ < ident_) {
+                            --ident_;
                             return Token{ tag_cast(Tag::DEIDENT) };
                         }
                         else {
-                            ident_ = cnt;
+                            ident_ = new_ident_;
                             return Token{ tag_cast(Tag::IDENT) };
                         }
                     }
@@ -132,6 +139,9 @@ namespace lexer {
             case '>':
                 if(readch('=')) return *Word::ge;
                 else return Token{ '>' };
+            case '-':
+                if(readch('>')) return *Word::delim;
+                else return Token{ '-' };
         }
         if(isdigit_s(peek_)) {
             
@@ -167,7 +177,7 @@ namespace lexer {
             std::string s = ss.str();
             if(auto w = words_.find(s); w != words_.end()) return w->second;
 
-            Word w{s, tag_cast(Tag::ID)};
+            Word w{ s, tag_cast(Tag::ID) };
             words_.emplace(s, w);
 
             return w;
