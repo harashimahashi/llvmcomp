@@ -65,7 +65,7 @@ namespace lexer {
         return true;
     }
 
-    Lexer::Lexer(std::string s) : source_{ s } {
+    Lexer::Lexer(std::string s) : source_{ std::move(s) } {
 
         words_.reserve(13);
 
@@ -81,6 +81,8 @@ namespace lexer {
         reserve(Word{ "break", tag_cast(Tag::BREAK) });
         reserve(Word{ "fun", tag_cast(Tag::DECL) });
         reserve(*Word::True); reserve(*Word::False);
+
+        readch();
     }
 
     Token Lexer::scan(){
@@ -96,13 +98,12 @@ namespace lexer {
             
             case '\n':
                 {   
-                    unsigned prev{ ident_ };
                     unsigned cnt{ 0 };
                     readch();
                     for(; peek_ == '\t'; readch()) ++cnt;
 
                     if(std::abs((int)ident_ - (int)cnt) > 1) 
-                        throw std::runtime_error{ "line " + std::to_string(line_) + ": ident_ation error\n" };
+                        throw std::runtime_error{ "line " + std::to_string(line_) + ": identation error\n" };
                     else if(cnt == ident_) return scan();
                     else {
                         if(cnt < ident_) {

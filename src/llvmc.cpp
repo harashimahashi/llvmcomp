@@ -20,13 +20,8 @@ int main(int argc, char* argv[]){
     }
 
     std::ifstream in{ program_path };
-    std::string source{ (std::istreambuf_iterator<char>(in)),
-                       std::istreambuf_iterator<char>() };
-    for(char c : source) {
-        std::cout << (int)c << ' ';
-    }
-    std::cout << '\n';
-    lexer::Lexer lex{ source };
+    lexer::Lexer lex{ std::string{ (std::istreambuf_iterator<char>(in)),
+                       std::istreambuf_iterator<char>() } };
     
     while(true) {
 
