@@ -3,4 +3,8 @@ project(llvmc VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if(UNIX)
+    add_definitions(-Wall -Wextra)
+endif()
+
 add_executable(llvmc src/llvmc.cpp src/lex.cpp)
