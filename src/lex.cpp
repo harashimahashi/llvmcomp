@@ -98,20 +98,18 @@ namespace lexer {
             
             case '\n':
                 {   
+                    ++line_;
                     unsigned cnt{ 0 };
-                    readch();
-                    for(; peek_ == '\t'; readch()) ++cnt;
+                    for(readch(); peek_ == '\t'; readch()) ++cnt;
 
-                    if(std::abs((int)ident_ - (int)cnt) > 1) 
-                        throw std::runtime_error{ "line " + std::to_string(line_) + ": identation error\n" };
-                    else if(cnt == ident_) return scan();
+                    if(cnt == ident_) return scan();
                     else {
                         if(cnt < ident_) {
-                            --ident_;
+                            ident_ = cnt;
                             return Token{ tag_cast(Tag::DEIDENT) };
                         }
                         else {
-                            ++ident_;
+                            ident_ = cnt;
                             return Token{ tag_cast(Tag::IDENT) };
                         }
                     }
@@ -148,7 +146,7 @@ namespace lexer {
             double x = v; 
             double d = 10;
 
-            for(;; readch()) {
+            for(; readch(), true;) {
                 
                 if(!isdigit_s(peek_)) break;
                 x = x + (peek_ - '0') / d;
