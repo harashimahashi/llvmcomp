@@ -1,5 +1,5 @@
-#include "iinter.h"
-#include "iparser.h"
+#include <llvmc/iinter.h>
+#include <llvmc/iparser.h>
 /*
 namespace inter {
 

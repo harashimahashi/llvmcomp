@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 project(llvmc VERSION 1.0.0)
 
-set(CMAKE_CXX_STANDARD 20)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+
+  set(CMAKE_CXX_STANDARD 20)
+
+  set(CMAKE_CXX_EXTENSIONS OFF)
+
+  set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+endif()
 
 find_package(LLVM 11 REQUIRED CONFIG)
 
@@ -13,13 +21,6 @@ add_definitions(${LLVM_DEFINITIONS})
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 
-file(GLOB LLVMC_SRC src/*.cpp)
+add_subdirectory(src)
 
-add_executable(llvmc ${LLVMC_SRC})
-target_compile_options(llvmc PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>: /W3 /WX>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>: -Wall -Wextra>
-)
-target_link_libraries(llvmc ${llvm_libs})
-
-set_property(TARGET llvmc PROPERTY INTERPROCEDURAL_OPTIMIZATION True)
+add_subdirectory(main)

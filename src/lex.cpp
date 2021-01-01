@@ -1,4 +1,4 @@
-#include "ilex.h"
+#include <llvmc/ilex.h>
 #include <cctype>
 
 namespace {

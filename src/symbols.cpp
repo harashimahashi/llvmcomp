@@ -1,4 +1,4 @@
-#include "isymbols.h"
+#include <llvmc/isymbols.h>
 
 namespace symbols {
 

@@ -8,8 +8,8 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-#include "ilex.h"
-#include "iparser.h"
+#include <llvmc/ilex.h>
+#include <llvmc/iparser.h>
 
 static llvm::LLVMContext Context;
 static llvm::IRBuilder<> Builder(Context);
