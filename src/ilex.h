@@ -1,3 +1,5 @@
+#ifndef LLVMC_ILEX_H_
+#define LLVMC_ILEX_H_
 #include <string>
 #include <memory>
 #include <unordered_map>
@@ -6,11 +8,10 @@
 namespace lexer {
 
     enum class Tag {
-        AND = 256, BASIC, BREAK, REPEAT, ELSE, EQ,
+        AND = 256, BREAK, REPEAT, ELSE, EQ,
         FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
-        NUM, OR, TEMP, TRUE, WHILE, UNTIL, TO, 
-        DOWNTO, FOR, IDENT, DEIDENT, DELIM,
-        DECL, RETURN
+        NUM, OR, TRUE, WHILE, UNTIL, TO, DOWNTO,
+        FOR, IDENT, DEIDENT, DELIM, DECL, RETURN
     };
 
     class Token {
@@ -22,8 +23,8 @@ namespace lexer {
         Token(int) noexcept;
         virtual ~Token();
 
-        operator bool() noexcept;
-        operator int() noexcept;
+        bool operator==(Token const&) const noexcept;
+        operator int() const noexcept;
     };
 
     class Num : public Token {
@@ -40,28 +41,42 @@ namespace lexer {
     public:
 
         Word(std::string, int);
-
+        
+        static const std::shared_ptr<Word> And, Or, eq, ne, le, ge, delim, minus, True, False, temp;
         std::string lexeme_;
-        static const std::unique_ptr<Word> And, Or, eq, ne, le, ge, delim, minus, True, False, temp;
-
     };
 
     class Lexer {
 
         char peek_;
-        std::unordered_map<std::string, Word> words_;
-        static inline unsigned line_ = 1;
+        std::unordered_map<std::string, std::shared_ptr<Word>> words_;
         unsigned ident_ = 0;
         unsigned new_ident_ = ident_;
         std::stringstream source_;
 
-        void reserve(Word);
+        void reserve(Word*);
         void readch();
         bool readch(char);
 
     public:
 
         Lexer(std::string);
-        Token scan();
+        std::shared_ptr<Token> scan();
+
+        static inline unsigned line_ = 1;
     };
 }
+
+namespace std {
+
+    template<>
+    struct hash<lexer::Token> {
+
+        std::size_t operator()(lexer::Token const& t) const {
+
+            return (std::hash<int>{}(int(t)) << 1);
+        }
+    };
+    
+}
+#endif

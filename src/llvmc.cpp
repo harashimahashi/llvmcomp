@@ -1,7 +1,18 @@
+//#include "llvm/IR/Verifier.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/raw_os_ostream.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include "ilex.h"
+#include "iparser.h"
+
+static llvm::LLVMContext Context;
+static llvm::IRBuilder<> Builder(Context);
 
 int main(int argc, char* argv[]){
 
@@ -23,14 +34,40 @@ int main(int argc, char* argv[]){
     lexer::Lexer lex{ std::string{ (std::istreambuf_iterator<char>(in)),
                        std::istreambuf_iterator<char>() } };
     
-    while(true) {
+    // while(true) {
 
-        if(lexer::Token t = lex.scan(); t) {
-            std::cout << static_cast<int>(t) << ' ';
-        }
-        else break;
+    //     if(lexer::Token t = lex.scan(); t) {
+    //         std::cout << static_cast<int>(t) << ' ';
+    //     }
+    //     else break;
         
-    }
-    std::cout << '\n';
+    // }
+    // std::cout << '\n';
 
+    auto Module = std::make_unique<llvm::Module>("test algolang", Context);
+
+    std::vector<llvm::Type*> scanf_args{ llvm::Type::getInt8PtrTy(Context) };
+
+    llvm::FunctionType *printfType = llvm::FunctionType::get(Builder.getInt32Ty(), scanf_args, true);
+    llvm::Function::Create(printfType, llvm::Function::ExternalLinkage, "printf", Module.get());
+
+    llvm::FunctionType *mainType = llvm::FunctionType::get(Builder.getInt32Ty(), false);
+    llvm::Function *main = llvm::Function::Create(mainType, llvm::Function::ExternalLinkage, "main", Module.get());
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(Context, "entry", main);
+  
+    Builder.SetInsertPoint(entry);
+  
+    std::vector<llvm::Value*> printArgs;
+    llvm::Value *formatStr = Builder.CreateGlobalStringPtr("%lf\n");
+    
+    printArgs.push_back(formatStr);
+    printArgs.push_back(llvm::ConstantInt::get(Context, llvm::APInt(32, 20)));
+    Builder.CreateCall(Module->getFunction("printf"), printArgs);
+  
+    Builder.CreateRet(llvm::ConstantInt::get(Context, llvm::APInt(32, 0)));
+
+    std::ofstream out{ "test.ll" };
+    llvm::raw_os_ostream OutputFile(out);
+
+    Module->print(OutputFile, nullptr);
 }
