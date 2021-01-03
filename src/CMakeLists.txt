@@ -9,6 +9,10 @@ target_link_libraries(llvmc_lib PRIVATE ${llvm_libs})
 
 target_compile_features(llvmc_lib PUBLIC cxx_std_20)
 
+target_link_options(llvmc_lib PUBLIC
+    $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
+)
+
 set_target_properties(
     llvmc_lib 
     PROPERTIES 
