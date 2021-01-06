@@ -63,6 +63,7 @@ int main(int argc, char* argv[]){
     printArgs.push_back(formatStr);
     printArgs.push_back(llvm::ConstantInt::get(Context, llvm::APInt(32, 20)));
     Builder.CreateCall(Module->getFunction("printf"), printArgs);
+    Builder.CreateAlloca(llvm::ArrayType::get(Builder.getDoubleTy(), 4), nullptr, "someArr");
   
     Builder.CreateRet(llvm::ConstantInt::get(Context, llvm::APInt(32, 0)));
 

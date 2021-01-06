@@ -22,9 +22,6 @@ namespace lexer {
 
         Token(int) noexcept;
         virtual ~Token();
-
-        bool operator==(Token const&) const noexcept;
-        operator int() const noexcept;
     };
 
     class Num : public Token {
@@ -42,41 +39,28 @@ namespace lexer {
 
         Word(std::string, int);
         
-        static const std::shared_ptr<Word> And, Or, eq, ne, le, ge, delim, minus, True, False, temp;
+        static const Word And, Or, eq, ne, le, ge, delim, minus, True, False;
         std::string lexeme_;
     };
 
     class Lexer {
 
         char peek_;
-        std::unordered_map<std::string, std::shared_ptr<Word>> words_;
+        std::unordered_map<std::string, Word> words_;
         unsigned ident_ = 0;
         unsigned new_ident_ = ident_;
         std::stringstream source_;
 
-        void reserve(Word*);
+        void reserve(Word);
         void readch();
         bool readch(char);
 
     public:
 
         Lexer(std::string);
-        std::shared_ptr<Token> scan();
+        std::unique_ptr<Token> scan();
 
         static inline unsigned line_ = 1;
     };
-}
-
-namespace std {
-
-    template<>
-    struct hash<lexer::Token> {
-
-        std::size_t operator()(lexer::Token const& t) const {
-
-            return (std::hash<int>{}(int(t)) << 1);
-        }
-    };
-    
 }
 #endif
