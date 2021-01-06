@@ -1,68 +1,69 @@
-/* #ifndef LLVMC_IINTER_H_
+#ifndef LLVMC_IINTER_H_
 #define LLVMC_IINTER_H_
-#include "ilex.h"
+#include <llvmc/ilex.h>
 #include "llvm/IR/Value.h"
 
-namespace inter {
+namespace llvmc {
 
-class Node {
+    namespace inter {
 
-    void error(std::string);
+        class Node {
 
-public:
+            void error(std::string);
 
-    Node() noexcept;
-    virtual ~Node();
-    virtual llvm::Value* compile() = 0;
+        public:
 
-};
+            Node() noexcept;
+            virtual ~Node();
+            virtual llvm::Value* compile() = 0;
 
-class Expr : public Node {};
+        };
 
-class Id : public Expr {
+        class Expr : public Node {
 
-    std::string name_;
+        protected:
 
-public:
+            lexer::Token op_;
 
-    Id(lexer::Word);
-    llvm::Value* compile() override;
-};
+        public:
 
-class Op : public Expr {
+            Expr(lexer::Token) noexcept;
+        };
 
-public:
+        class Op : public Expr {
 
-    Op(lexer::Token) noexcept;
-};
+        public:
 
-class Arith : public Op {
+            Op(lexer::Token) noexcept;
+        };
 
-    std::unique_ptr<Expr> lhs_, rhs_;
+        class Arith : public Op {
 
-public:
+            std::unique_ptr<Expr> lhs_, rhs_;
 
-    Arith(lexer::Token, std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-    llvm::Value* compile() override;
-};
+        public:
 
-class Unary : public Op {
+            Arith(lexer::Token, std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() override;
+        };
 
-    std::unique_ptr<Expr> exp_;
+        class Unary : public Op {
 
-public:
+            std::unique_ptr<Expr> exp_;
 
-    Unary(lexer::Token, std::unique_ptr<Expr>) noexcept;
-    llvm::Value* compile() override;
-};
+        public:
 
-class Constant : public Expr {
+            Unary(lexer::Token, std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() override;
+        };
 
-public:
+        /* class Constant : public Expr {
 
-    Constant(double) noexcept;
-    llvm::Value* compile() override;
-};
+        public:
 
+            Constant(double) noexcept;
+            llvm::Value* compile() override;
+        }; */
+    }
 }
-#endif */
+#endif

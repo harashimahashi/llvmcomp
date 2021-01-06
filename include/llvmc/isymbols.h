@@ -1,26 +1,24 @@
 #ifndef LLVMC_ISYMBOLS_H_
 #define LLVMC_ISYMBOLS_H_
-#include <llvmc/ilex.h>
 #include "llvm/IR/Value.h"
 
-namespace symbols {
+namespace llvmc {
 
-class Env {
+    namespace symbols {
 
-    std::unordered_map<std::unique_ptr<lexer::Word>, llvm::Value*> table_;
+        class Env {
 
-protected:
+            std::unordered_map<std::string, llvm::Value*> table_;
+            std::shared_ptr<Env> prev_;
 
-    std::unique_ptr<Env> prev_;
+        public:
 
-public:
+            Env(std::unique_ptr<Env>);
 
-    Env(Env*);
+            void insert(std::string, llvm::Value*);
+            llvm::Value* get(std::string);
 
-    void insert(std::unique_ptr<lexer::Word>, llvm::Value*);
-    llvm::Value* get(std::unique_ptr<lexer::Word>);
-
-};
-
+        };
+    }
 }
 #endif

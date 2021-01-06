@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
     }
 
     std::ifstream in{ program_path };
-    lexer::Lexer lex{ std::string{ (std::istreambuf_iterator<char>(in)),
+    llvmc::lexer::Lexer lex{ std::string{ (std::istreambuf_iterator<char>(in)),
                        std::istreambuf_iterator<char>() } };
     
     // while(true) {
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]){
     printArgs.push_back(formatStr);
     printArgs.push_back(llvm::ConstantInt::get(Context, llvm::APInt(32, 20)));
     Builder.CreateCall(Module->getFunction("printf"), printArgs);
+    Builder.CreateAlloca(llvm::ArrayType::get(Builder.getDoubleTy(), 4), nullptr, "someArr");
     Builder.CreateAlloca(llvm::ArrayType::get(Builder.getDoubleTy(), 4), nullptr, "someArr");
   
     Builder.CreateRet(llvm::ConstantInt::get(Context, llvm::APInt(32, 0)));

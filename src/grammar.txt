@@ -16,14 +16,20 @@ param_seq -> param_seq, ID
 	| ID
 stmts -> stmts stmt
 	|
-stmt -> loc = expr
+stmt -> decls
+	| loc = bool;
 	| if_stmt
 	| while_stmt
 	| repeat_until_stmt
 	| for_stmt
-	| fun_call
-	| BREAK
-	| RETURN bool ->
+	| fun_call;
+	| BREAK;
+	| RETURN bool;
+decls -> decls decl
+	|
+decl -> ID decl_opt;
+decl_opt -> decl_opt [ NUM ]
+	| 
 if_stmt -> IF bool -> IDENT stmts DEIDENT
 	| IF bool -> IDENT stmts DEIDENT elif_stmts
 while_stmt -> WHILE bool -> IDENT stmts DEIDENT

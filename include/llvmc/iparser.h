@@ -1,25 +1,27 @@
-/* #ifndef LLVMC_IPARSER_H_
+#ifndef LLVMC_IPARSER_H_
 #define LLVMC_IPARSER_H_
-#include "isymbols.h"
+#include <llvmc/ilex.h>
+#include <llvmc/isymbols.h>
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 
-namespace parser {
+namespace llvmc {
 
-    class Parser {
+    namespace parser {
 
-    lexer::Lexer lex;
-    lexer::Token tok;
-    
-    public:
+        class Parser {
 
-        static inline llvm::LLVMContext Context;
-        static inline llvm::IRBuilder<> Builder{ Context };
-        static inline std::unique_ptr<llvm::Module> Module;
-        static inline symbols::Env* top = nullptr;
+        lexer::Lexer lex;
+        std::unique_ptr<lexer::Token> tok;
+        
+        public:
 
-    };
+            static inline llvm::LLVMContext Context;
+            static inline llvm::IRBuilder<> Builder{ Context };
+            static inline std::unique_ptr<llvm::Module> Module;
+            static inline std::shared_ptr<symbols::Env> top = nullptr;
 
+        };
+    }
 }
-
-#endif */
+#endif
