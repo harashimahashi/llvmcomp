@@ -4,40 +4,33 @@ fun_stmts -> fun_stmts fun_stmt
 fun_stmt -> fun_def 
 	| fun_call
 	|
-fun_call -> ID(args_seq_opt)
-args_seq_opt -> args_seq
-	| 
-args_seq -> args_seq, bool
-	| bool
-fun_def -> DECL ID(param_seq_opt) IDENT stmts DEIDENT
+fun_call -> ID(expr_seq_opt)
+fun_def -> FUN ID(param_seq_opt) IDENT stmts DEIDENT
 param_seq_opt -> param_seq
 	|
 param_seq -> param_seq, ID
 	| ID
-stmts -> stmts stmt
+stmts_opt -> stmts
 	|
-stmt -> decls
-	| loc = bool;
+stmts -> stmts stmt
+	| stmt
+stmt -> decl;
+	| decl_init;
+	| bool;
 	| if_stmt
 	| while_stmt
 	| repeat_until_stmt
 	| for_stmt
-	| fun_call;
 	| BREAK;
 	| RETURN bool;
-decls -> decls decl
-	|
-decl -> ID decl_opt;
-decl_opt -> decl_opt [ NUM ]
-	| 
-if_stmt -> IF bool -> IDENT stmts DEIDENT
-	| IF bool -> IDENT stmts DEIDENT elif_stmts
-while_stmt -> WHILE bool -> IDENT stmts DEIDENT
-repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool ->
-for_stmt -> FOR bool TO bool -> IDENT stmts DEIDENT
-	| FOR bool DOWNTO bool -> IDENT stmts DEIDENT
-loc -> loc[bool]
-	| ID
+decl -> LET ID
+decl_init -> LET ID = bool 
+if_stmt -> IF bool IDENT stmts DEIDENT
+	| IF bool IDENT stmts DEIDENT ELSE stmts
+while_stmt -> WHILE bool IDENT stmts DEIDENT
+repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool;
+for_stmt -> FOR bool TO bool IDENT stmts DEIDENT
+	| FOR bool DOWNTO bool IDENT stmts DEIDENT
 bool -> bool || join
 	| join
 join -> join && equality
@@ -64,3 +57,9 @@ factor -> (bool)
 	| NUM
 	| TRUE
 	| FALSE
+	| [expr_seq_opt]
+	| fun_call
+expr_seq_opt -> expr_seq
+	|
+expr_seq -> expr_seq , bool
+	| bool

@@ -13,7 +13,7 @@ namespace llvmc {
             AND = 256, BREAK, REPEAT, ELSE, EQ,
             FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
             NUM, OR, TRUE, WHILE, UNTIL, TO, DOWNTO,
-            FOR, IDENT, DEIDENT, DELIM, DECL, RETURN
+            FOR, IDENT, DEIDENT, FUN, LET, RETURN
         };
 
         class Token {
@@ -42,7 +42,7 @@ namespace llvmc {
 
             Word(std::string, int);
             
-            static const Word And, Or, eq, ne, le, ge, delim, minus, True, False;
+            static const Word And, Or, eq, ne, le, ge, minus, True, False;
             std::string lexeme_;
         };
 

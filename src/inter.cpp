@@ -11,17 +11,17 @@ namespace llvmc {
 
         Node::~Node() = default;
 
-        Expr::Expr(Token t) noexcept : op_{ t } {}
+        Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
 
-        Op::Op(Token t) noexcept : Expr{ t } {}
+        Op::Op(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
 
-        Arith::Arith(lexer::Token t, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) noexcept : Op{ t }, lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
+        Arith::Arith(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) noexcept : Op{ std::move(t) }, lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
         Value* Arith::compile() {
 
             Value* L = lhs_->compile();
             Value* R = rhs_->compile();
 
-            switch(op_) {
+            switch(*op_) {
                 case '+':
                     return Parser::Builder.CreateFAdd(L, R, "addtmp");
                 case '-':
@@ -33,7 +33,7 @@ namespace llvmc {
             }
         }
 
-        Unary::Unary(Token t, std::unique_ptr<Expr> e) noexcept : Op{ t }, exp_{ std::move(e) } {}
+        Unary::Unary(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept : Op{ std::move(t) }, exp_{ std::move(e) } {}
         Value* Unary::compile() {
 
             Value* E = exp_->compile();

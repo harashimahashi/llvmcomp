@@ -41,7 +41,6 @@ namespace llvmc {
             Word::ne{ "!=", tag_cast(Tag::NE) }, 
             Word::le{ "<=", tag_cast(Tag::LE) }, 
             Word::ge{ ">=", tag_cast(Tag::GE) }, 
-            Word::delim { "->", tag_cast(Tag::DELIM) },
             Word::minus{ "minus", tag_cast(Tag::MINUS) }, 
             Word::True{ "true", tag_cast(Tag::TRUE) }, 
             Word::False{ "false", tag_cast(Tag::FALSE) };
@@ -79,7 +78,8 @@ namespace llvmc {
             reserve(Word{ "to", tag_cast(Tag::TO) });
             reserve(Word{ "downto", tag_cast(Tag::DOWNTO) });
             reserve(Word{ "break", tag_cast(Tag::BREAK) });
-            reserve(Word{ "fun", tag_cast(Tag::DECL) });
+            reserve(Word{ "fun", tag_cast(Tag::FUN) });
+            reserve(Word{ "let", tag_cast(Tag::LET) });
             reserve(Word{ "return", tag_cast(Tag::RETURN) });
             reserve(Word::True); reserve(Word::False);
             words_.emplace("print", Word{ "printf", tag_cast(Tag::ID) });
@@ -140,9 +140,6 @@ namespace llvmc {
                 case '>':
                     if(readch('=')) return std::make_unique<Word>(Word::ge);
                     else return std::make_unique<Token>('>');
-                case '-':
-                    if(readch('>')) return std::make_unique<Word>(Word::delim);
-                    else return std::make_unique<Token>('-');
             }
             if(isdigit_s(peek_)) {
                 

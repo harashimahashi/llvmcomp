@@ -1,6 +1,7 @@
 #ifndef LLVMC_IINTER_H_
 #define LLVMC_IINTER_H_
 #include <llvmc/ilex.h>
+#include <llvmc/isymbols.h>
 #include "llvm/IR/Value.h"
 
 namespace llvmc {
@@ -23,18 +24,28 @@ namespace llvmc {
 
         protected:
 
-            lexer::Token op_;
+            std::unique_ptr<lexer::Token> op_;
 
         public:
 
-            Expr(lexer::Token) noexcept;
+            Expr(std::unique_ptr<lexer::Token>) noexcept;
+        };
+
+        class Id : public Expr {
+            
+            symbols::Type type_;
+            llvm::Value* val_;
+
+        public:
+
+            Id(llvm::Value*, symbols::Type);
         };
 
         class Op : public Expr {
 
         public:
 
-            Op(lexer::Token) noexcept;
+            Op(std::unique_ptr<lexer::Token>) noexcept;
         };
 
         class Arith : public Op {
@@ -43,7 +54,7 @@ namespace llvmc {
 
         public:
 
-            Arith(lexer::Token, std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            Arith(std::unique_ptr<lexer::Token>, std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -53,7 +64,7 @@ namespace llvmc {
 
         public:
 
-            Unary(lexer::Token, std::unique_ptr<Expr>) noexcept;
+            Unary(std::unique_ptr<lexer::Token>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
