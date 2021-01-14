@@ -70,7 +70,7 @@ namespace llvmc {
 
         Lexer::Lexer(std::string s) : source_{ std::move(s) } {
 
-            words_.reserve(15);
+            words_.reserve(16);
 
             reserve(Word{ "if", tag_cast(Tag::IF) });
             reserve(Word{ "else", tag_cast(Tag::ELSE) });

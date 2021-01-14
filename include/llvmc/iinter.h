@@ -16,19 +16,16 @@ namespace llvmc {
 
             Node() noexcept;
             virtual ~Node();
-            virtual llvm::Value* compile() = 0;
-
+            virtual llvm::Value* compile() const = 0;
         };
 
         class Expr : public Node {
 
-        protected:
-
-            std::unique_ptr<lexer::Token> op_;
-
         public:
 
             Expr(std::unique_ptr<lexer::Token>) noexcept;
+
+            const std::unique_ptr<const lexer::Token> op_;
         };
 
         class Op : public Expr {
@@ -46,7 +43,7 @@ namespace llvmc {
 
             Arith(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() override;
+            llvm::Value* compile() const override;
         };
 
         class Unary : public Op {
@@ -57,7 +54,7 @@ namespace llvmc {
 
             Unary(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() override;
+            llvm::Value* compile() const override;
         };
 
         class Constant : public Expr {
@@ -65,34 +62,34 @@ namespace llvmc {
         public:
 
             Constant(double) noexcept;
-            llvm::Value* compile() override;
+            llvm::Value* compile() const override;
         };
 
         class Logical : public Expr {
             
         public:
         
-            std::unique_ptr<Expr> lhs_, rhs_;
+            const std::unique_ptr<const Expr> lhs_, rhs_;
             Logical(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
         };
 
-        class Bool : Logical {
+        class Bool : public Logical {
 
         public:
 
             Bool(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() override;
+            llvm::Value* compile() const override;
         };
 
-        class Not : Logical {
+        class Not : public Logical {
 
         public:
 
             Not(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() override;
+            llvm::Value* compile() const override;
         };
     }
 }
