@@ -18,7 +18,8 @@ namespace {
 
     llvm::Value* LogErrorV(std::string s) {
         
-        llvm::errs() << "Compile error:" << llvmc::lexer::Lexer::line_ << ": " << s << '\n';
+        llvm::errs() << "Compile error:" << 
+            llvmc::lexer::Lexer::line_ << ": " << s << '\n';
 
         return nullptr;
     }
