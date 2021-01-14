@@ -34,6 +34,7 @@ namespace llvmc {
         public:
 
             Num(double) noexcept;
+            operator double() const noexcept;
         };
 
         class Word : public Token {

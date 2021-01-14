@@ -52,12 +52,14 @@ term -> term * unary
 unary -> !unary
 	| -unary
 	| factor
-factor -> (bool)
-	| loc
-	| NUM
+factor -> NUM
 	| TRUE
 	| FALSE
+	| access_expr
 	| [expr_seq_opt]
+access_expr -> (bool)
+	| access_expr[bool]
+	| ID
 	| fun_call
 expr_seq_opt -> expr_seq
 	|

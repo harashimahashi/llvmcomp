@@ -31,16 +31,6 @@ namespace llvmc {
             Expr(std::unique_ptr<lexer::Token>) noexcept;
         };
 
-        class Id : public Expr {
-            
-            symbols::Type type_;
-            llvm::Value* val_;
-
-        public:
-
-            Id(llvm::Value*, symbols::Type);
-        };
-
         class Op : public Expr {
 
         public:
@@ -54,7 +44,8 @@ namespace llvmc {
 
         public:
 
-            Arith(std::unique_ptr<lexer::Token>, std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            Arith(std::unique_ptr<lexer::Token>, 
+                std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -64,17 +55,45 @@ namespace llvmc {
 
         public:
 
-            Unary(std::unique_ptr<lexer::Token>, std::unique_ptr<Expr>) noexcept;
+            Unary(std::unique_ptr<lexer::Token>, 
+                std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
-        /* class Constant : public Expr {
+        class Constant : public Expr {
 
         public:
 
             Constant(double) noexcept;
             llvm::Value* compile() override;
-        }; */
+        };
+
+        class Logical : public Expr {
+            
+        public:
+        
+            std::unique_ptr<Expr> lhs_, rhs_;
+            Logical(std::unique_ptr<lexer::Token>, 
+                std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+        };
+
+        class Bool : Logical {
+
+        public:
+
+            Bool(std::unique_ptr<lexer::Token>, 
+                std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() override;
+        };
+
+        class Not : Logical {
+
+        public:
+
+            Not(std::unique_ptr<lexer::Token>, 
+                std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() override;
+        };
     }
 }
 #endif

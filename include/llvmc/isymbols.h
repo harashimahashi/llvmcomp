@@ -19,10 +19,6 @@ namespace llvmc {
             llvm::Value* get(std::string);
 
         };
-
-        enum class Type {
-            BASIC, ARRAY 
-        };
     }
 }
 #endif

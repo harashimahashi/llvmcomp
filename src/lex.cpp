@@ -31,6 +31,9 @@ namespace llvmc {
         }
 
         Num::Num(double v) noexcept : Token{ tag_cast(Tag::NUM) }, val_{ v } {}
+        Num::operator double() const noexcept {
+            return val_;
+        }
         
         Word::Word(std::string s, int tag) : Token{ tag }, lexeme_{ s } {}
 
@@ -150,7 +153,8 @@ namespace llvmc {
                     readch();
                 } while(isdigit_s(peek_));
                 
-                if(peek_ != '.') return std::make_unique<Num>(static_cast<double>(v));
+                if(peek_ != '.') 
+                    return std::make_unique<Num>(static_cast<double>(v));
                 double x = v; 
                 double d = 10;
 
@@ -173,7 +177,8 @@ namespace llvmc {
                 } while(isalnum_s(peek_));
 
                 std::string s = ss.str();
-                if(auto w = words_.find(s); w != words_.end()) return std::make_unique<Word>(w->second);
+                if(auto w = words_.find(s); w != words_.end()) 
+                    return std::make_unique<Word>(w->second);
 
                 auto w = std::make_unique<Word>(s, tag_cast(Tag::ID));
                 words_.emplace(s, *w);
