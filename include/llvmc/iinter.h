@@ -7,13 +7,13 @@ namespace llvmc {
 
     namespace inter {
 
-        class Node {
+        using BBList = llvm::SmallVector<llvm::BasicBlock*, 4>;
+        using ValList = llvm::SmallVector<llvm::Value*, 8>;
 
-            void error(std::string);
+        class Node {
 
         public:
 
-            Node() noexcept;
             virtual ~Node();
             virtual llvm::Value* compile() const = 0;
         };
@@ -79,11 +79,11 @@ namespace llvmc {
         class Access : public Op {
 
             llvm::Value* arr_;
-            std::vector<llvm::Value*> args_;
+            ValList args_;
 
         public:
 
-            Access(Id*, std::vector<llvm::Value*>);
+            Access(Id*, ValList);
             llvm::Value* compile() const override;
         };
 
@@ -119,6 +119,21 @@ namespace llvmc {
 
             Not(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() const override;
+        };
+
+        class Stmt : public Node {};
+
+        class IfElse : public Stmt {
+            
+            std::unique_ptr<Expr> expr_;
+            std::unique_ptr<Stmt> stmt1_;
+            std::unique_ptr<Stmt> stmt2_;
+
+        public:
+
+            IfElse(std::unique_ptr<Expr>, std::unique_ptr<Stmt>,
+                                std::unique_ptr<Stmt>) noexcept;
             llvm::Value* compile() const override;
         };
     }

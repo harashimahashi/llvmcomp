@@ -92,21 +92,19 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        Access::Access(Id* id, std::vector<Value*> vec = {}) : Op{ nullptr }, 
+        Access::Access(Id* id, ValList vec = {}) : Op{ nullptr }, 
                                                     arr_{ id->compile() } {
 
             if(auto I = dynamic_cast<Array*>(id); I) {
                 
                 if(!vec.size()) {
-                    for(unsigned i = 0; i < I->dim_; i++) 
+                    for(unsigned i = 0; i < I->dim_ + 1; i++) 
                         args_.emplace_back(Parser::Builder.getInt32(0));
                 }
-                else 
+                else
                     args_ = std::move(vec);
-            }
 
-            LogErrorV("trying to acces variable of non-array type: " 
-                                            + arr_->getName().str());
+            }
         }
 
         Value* Access::compile() const {
@@ -188,6 +186,18 @@ namespace llvmc {
             }
 
             return LogErrorV("invalid operand type");
+        }
+
+        IfElse::IfElse(std::unique_ptr<Expr> e, 
+        std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2 = nullptr) noexcept
+        : expr_{ std::move(e) }, stmt1_{ std::move(s1) }, stmt2_{ std::move(s2) } {}
+
+        Value* IfElse::compile() const {
+
+            BBList List;
+
+            
+
         }
     }
 }
