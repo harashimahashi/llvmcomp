@@ -1,17 +1,14 @@
 program -> fun_stmts
 fun_stmts -> fun_stmts fun_stmt 
-	| fun_stmt
+	| 
 fun_stmt -> fun_def 
 	| fun_call
-	|
 fun_call -> ID(expr_seq_opt)
 fun_def -> FUN ID(param_seq_opt) IDENT stmts DEIDENT
 param_seq_opt -> param_seq
 	|
 param_seq -> param_seq, ID
 	| ID
-stmts_opt -> stmts
-	|
 stmts -> stmts stmt
 	| stmt
 stmt -> decl;
@@ -23,8 +20,9 @@ stmt -> decl;
 	| for_stmt
 	| BREAK;
 	| RETURN bool;
-decl -> LET ID
-decl_init -> LET ID = bool 
+decl -> decl[NUM]
+	| LET ID
+decl_init -> decl = bool 
 if_stmt -> IF bool IDENT stmts DEIDENT
 	| IF bool IDENT stmts DEIDENT ELSE stmts
 while_stmt -> WHILE bool IDENT stmts DEIDENT
