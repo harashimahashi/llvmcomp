@@ -37,6 +37,20 @@ namespace llvmc {
 
         Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
 
+        Id::Id(std::unique_ptr<Token> t, Value* v) 
+                : Expr{ std::move(t) }, var_{ v } {}
+        Value* Id::compile() const {
+
+            return var_;
+        }
+
+        Array::Array(std::unique_ptr<lexer::Token> t, Value* v, unsigned u) 
+                                    : Id{ std::move(t), v }, dim_{ u }  {}
+        Value* Array::compile() const {
+
+            return Id::compile();
+        }
+
         Op::Op(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
 
         Arith::Arith(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
@@ -76,6 +90,28 @@ namespace llvmc {
             }
 
             return LogErrorV("invalid operand type");
+        }
+
+        Access::Access(Id* id, std::vector<Value*> vec = {}) : Op{ nullptr }, 
+                                                    arr_{ id->compile() } {
+
+            if(auto I = dynamic_cast<Array*>(id); I) {
+                
+                if(!vec.size()) {
+                    for(unsigned i = 0; i < I->dim_; i++) 
+                        args_.emplace_back(Parser::Builder.getInt32(0));
+                }
+                else 
+                    args_ = std::move(vec);
+            }
+
+            LogErrorV("trying to acces variable of non-array type: " 
+                                            + arr_->getName().str());
+        }
+
+        Value* Access::compile() const {
+            
+            return Parser::Builder.CreateGEP(arr_, args_);
         }
 
         Constant::Constant(double d) noexcept : Expr{ std::make_unique<Num>(d) } {}

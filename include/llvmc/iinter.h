@@ -1,7 +1,6 @@
 #ifndef LLVMC_IINTER_H_
 #define LLVMC_IINTER_H_
 #include <llvmc/ilex.h>
-#include <llvmc/isymbols.h>
 #include "llvm/IR/Value.h"
 
 namespace llvmc {
@@ -26,6 +25,26 @@ namespace llvmc {
             Expr(std::unique_ptr<lexer::Token>) noexcept;
 
             const std::unique_ptr<const lexer::Token> op_;
+        };
+
+        class Id : public Expr {
+
+            llvm::Value* var_;
+
+        public:
+
+            Id(std::unique_ptr<lexer::Token>, llvm::Value*);
+            llvm::Value* compile() const override;
+        };
+
+        class Array : public Id {
+
+        public:
+
+            Array(std::unique_ptr<lexer::Token>, llvm::Value*, unsigned);
+            llvm::Value* compile() const override;
+
+            const unsigned dim_;
         };
 
         class Op : public Expr {
@@ -54,6 +73,17 @@ namespace llvmc {
 
             Unary(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
+            llvm::Value* compile() const override;
+        };
+
+        class Access : public Op {
+
+            llvm::Value* arr_;
+            std::vector<llvm::Value*> args_;
+
+        public:
+
+            Access(Id*, std::vector<llvm::Value*>);
             llvm::Value* compile() const override;
         };
 
