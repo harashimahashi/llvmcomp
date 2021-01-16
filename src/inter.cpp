@@ -38,14 +38,14 @@ namespace llvmc {
         Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
 
         Id::Id(std::unique_ptr<Token> t, Value* v) 
-                : Expr{ std::move(t) }, var_{ v } {}
+            : Expr{ std::move(t) }, var_{ v } {}
         Value* Id::compile() const {
 
             return var_;
         }
 
         Array::Array(std::unique_ptr<lexer::Token> t, Value* v, unsigned u) 
-                                    : Id{ std::move(t), v }, dim_{ u }  {}
+            : Id{ std::move(t), v }, dim_{ u }  {}
         Value* Array::compile() const {
 
             return Id::compile();
@@ -54,8 +54,8 @@ namespace llvmc {
         Op::Op(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
 
         Arith::Arith(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
-                    std::unique_ptr<Expr> e2) noexcept : Op{ std::move(t) },
-                            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
+            std::unique_ptr<Expr> e2) noexcept : Op{ std::move(t) },
+            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
         Value* Arith::compile() const {
 
             Value* L = lhs_->compile();
@@ -80,7 +80,7 @@ namespace llvmc {
         }
 
         Unary::Unary(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept
-                                    : Op{ std::move(t) }, exp_{ std::move(e) } {}
+            : Op{ std::move(t) }, exp_{ std::move(e) } {}
         Value* Unary::compile() const {
 
             Value* E = exp_->compile();
@@ -93,7 +93,7 @@ namespace llvmc {
         }
 
         Access::Access(Id* id, ValList vec = {}) : Op{ nullptr }, 
-                                                    arr_{ id->compile() } {
+            arr_{ id->compile() } {
 
             if(auto I = dynamic_cast<Array*>(id); I) {
                 
@@ -120,12 +120,12 @@ namespace llvmc {
         }
 
         Logical::Logical(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
-                    std::unique_ptr<Expr> e2) noexcept : Expr{ std::move(t) },
-                            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
+            std::unique_ptr<Expr> e2) noexcept : Expr{ std::move(t) },
+            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
 
         Bool::Bool(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1, 
-                                std::unique_ptr<Expr> e2) noexcept 
-        : Logical{ std::move(t), std::move(e1), std::move(e2) } {}
+            std::unique_ptr<Expr> e2) noexcept : Logical{ std::move(t),
+            std::move(e1), std::move(e2) } {}
         Value* Bool::compile() const {
 
             Value* L = lhs_->compile();
@@ -172,7 +172,7 @@ namespace llvmc {
         }
 
         Not::Not(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1) noexcept 
-        : Logical{ std::move(t), std::move(e1), nullptr } {}
+            : Logical{ std::move(t), std::move(e1), nullptr } {}
         Value* Not::compile() const {
 
             Value* E = lhs_->compile();
@@ -188,16 +188,53 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        IfElse::IfElse(std::unique_ptr<Expr> e, 
-        std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2 = nullptr) noexcept
-        : expr_{ std::move(e) }, stmt1_{ std::move(s1) }, stmt2_{ std::move(s2) } {}
+        BBList Stmt::compute_bb() {
+            
+            BBList temp{};
 
+            if(expr_) {
+
+                Function* par = Parser::Builder.GetInsertBlock()->getParent();
+                unsigned blocks = stmt2_ ? 3 : 2;
+
+                for(unsigned i = 0; i < blocks; i++) {
+                    temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
+                }
+            }
+
+            return temp;
+        }
+        Stmt::Stmt(std::unique_ptr<Stmt> s1, std::unique_ptr<Expr> e = nullptr,
+            std::unique_ptr<Stmt> s2 = nullptr) : stmt1_{ std::move(s1) },
+            expr_{ std::move(e) }, stmt2_{ std::move(s2) }, List{ compute_bb() } {}
+        Stmt::Stmt const* const empty = nullptr;
+
+        IfElse::IfElse(std::unique_ptr<Stmt> s1,
+            std::unique_ptr<Expr> e = nullptr, std::unique_ptr<Stmt> s2 = nullptr)
+            : Stmt{ std::move(s1), std::move(e), std::move(s2)} {}
         Value* IfElse::compile() const {
 
-            BBList List;
-
+            Value* E = Parser::Builder.CreateFPToUI(
+                expr_->compile(), Parser::Builder.getInt1Ty());
             
+            Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
+            Parser::Builder.SetInsertPoint(List[0]);
+            stmt1_->compile();
+            if(stmt2_) {
+
+                Parser::Builder.CreateBr(List[1]);
+                Parser::Builder.SetInsertPoint(List[1]);
+            }
+            else {
+
+                Parser::Builder.SetInsertPoint(List[1]);
+                stmt2_->compile();
+                Parser::Builder.CreateBr(List[2]);
+                Parser::Builder.SetInsertPoint(List[2]);
+            }
+            
+            return List[2];
         }
     }
 }

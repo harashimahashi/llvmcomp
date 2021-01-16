@@ -2,13 +2,14 @@
 #define LLVMC_IINTER_H_
 #include <llvmc/ilex.h>
 #include "llvm/IR/Value.h"
+#include "llvm/ADT/SmallVector.h"
 
 namespace llvmc {
 
     namespace inter {
 
         using BBList = llvm::SmallVector<llvm::BasicBlock*, 4>;
-        using ValList = llvm::SmallVector<llvm::Value*, 8>;
+        using ValList = llvm::SmallVector<llvm::Value*, 8>; 
 
         class Node {
 
@@ -99,9 +100,10 @@ namespace llvmc {
             
         public:
         
-            const std::unique_ptr<const Expr> lhs_, rhs_;
             Logical(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+
+            const std::unique_ptr<const Expr> lhs_, rhs_;
         };
 
         class Bool : public Logical {
@@ -122,18 +124,29 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class Stmt : public Node {};
+        class Stmt : public Node {
 
-        class IfElse : public Stmt {
-            
-            std::unique_ptr<Expr> expr_;
-            std::unique_ptr<Stmt> stmt1_;
-            std::unique_ptr<Stmt> stmt2_;
+            BBList compute_bb();
 
         public:
 
-            IfElse(std::unique_ptr<Expr>, std::unique_ptr<Stmt>,
-                                std::unique_ptr<Stmt>) noexcept;
+            Stmt(std::unique_ptr<Stmt>,
+                std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+
+            const std::unique_ptr<const Stmt> stmt1_;
+            const std::unique_ptr<const Expr> expr_;
+            const std::unique_ptr<const Stmt> stmt2_;
+            const BBList List;
+
+            static Stmt const* const empty;
+        };
+
+        class IfElse : public Stmt {
+
+        public:
+
+            IfElse(std::unique_ptr<Stmt>,
+                std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() const override;
         };
     }
