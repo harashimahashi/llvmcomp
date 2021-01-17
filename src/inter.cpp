@@ -188,53 +188,67 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        BBList Stmt::compute_bb() {
+        BBList Stmt::compute_bb(unsigned cnt) {
             
             BBList temp{};
+            Function* par = Parser::Builder.GetInsertBlock()->getParent();
 
-            if(expr_) {
-
-                Function* par = Parser::Builder.GetInsertBlock()->getParent();
-                unsigned blocks = stmt2_ ? 3 : 2;
-
-                for(unsigned i = 0; i < blocks; i++) {
-                    temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
-                }
+            for(unsigned i = 0; i < cnt; i++) {
+                temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
             }
 
             return temp;
         }
-        Stmt::Stmt(std::unique_ptr<Stmt> s1, std::unique_ptr<Expr> e = nullptr,
-            std::unique_ptr<Stmt> s2 = nullptr) : stmt1_{ std::move(s1) },
-            expr_{ std::move(e) }, stmt2_{ std::move(s2) }, List{ compute_bb() } {}
-        Stmt::Stmt const* const empty = nullptr;
+        Stmt::Stmt(std::unique_ptr<Expr> e, unsigned cnt) 
+            : expr_{ std::move(e) }, List{ compute_bb(cnt) } {}
+        Value* Stmt::compile() const {
 
-        IfElse::IfElse(std::unique_ptr<Stmt> s1,
-            std::unique_ptr<Expr> e = nullptr, std::unique_ptr<Stmt> s2 = nullptr)
-            : Stmt{ std::move(s1), std::move(e), std::move(s2)} {}
-        Value* IfElse::compile() const {
+            if(expr_)
+                return expr_->compile();
 
-            Value* E = Parser::Builder.CreateFPToUI(
-                expr_->compile(), Parser::Builder.getInt1Ty());
+            return nullptr;
+        }
+        const Stmt Stmt::empty{};
+
+        IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
+            std::unique_ptr<Stmt> s, unsigned cnt) 
+            : Stmt{ std::move(e), cnt }, stmt_{ std::move(s) } {}
+        void IfElseBase::emit_if() const {
             
+            Value* E = Parser::Builder.CreateFPToUI(
+                Stmt::compile(), Parser::Builder.getInt1Ty());
+
             Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
             Parser::Builder.SetInsertPoint(List[0]);
-            stmt1_->compile();
-            if(stmt2_) {
+            stmt_->compile();
 
-                Parser::Builder.CreateBr(List[1]);
-                Parser::Builder.SetInsertPoint(List[1]);
-            }
-            else {
+            Parser::Builder.CreateBr(List.back());
+        }
+        llvm::Value* IfElseBase::compile() const { 
 
-                Parser::Builder.SetInsertPoint(List[1]);
-                stmt2_->compile();
-                Parser::Builder.CreateBr(List[2]);
-                Parser::Builder.SetInsertPoint(List[2]);
-            }
-            
-            return List[2];
+            emit_if();
+            emit_else();
+
+            Parser::Builder.SetInsertPoint(List.back());
+
+            return nullptr;
+        }
+
+        If::If(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s)
+            : IfElseBase{ std::move(e), std::move(s), num_blocks_ } {}
+        void If::emit_else() const {}
+
+        IfElse::IfElse(std::unique_ptr<Expr> e, 
+            std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
+            : IfElseBase{ std::move(e), std::move(s1), num_blocks_ },
+            stmt_{ std::move(s2) } {}
+        void IfElse::emit_else() const {
+
+            Parser::Builder.SetInsertPoint(List[1]);
+            stmt_->compile();
+
+            Parser::Builder.CreateBr(List.back());
         }
     }
 }

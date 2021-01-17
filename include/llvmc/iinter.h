@@ -126,28 +126,61 @@ namespace llvmc {
 
         class Stmt : public Node {
 
-            BBList compute_bb();
+            BBList compute_bb(unsigned);
+            std::unique_ptr<Expr> expr_;
 
         public:
 
-            Stmt(std::unique_ptr<Stmt>,
-                std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            Stmt(std::unique_ptr<Expr> = nullptr, unsigned = 0);
+            llvm::Value* compile() const override;
 
-            const std::unique_ptr<const Stmt> stmt1_;
-            const std::unique_ptr<const Expr> expr_;
-            const std::unique_ptr<const Stmt> stmt2_;
             const BBList List;
-
-            static Stmt const* const empty;
+            static const Stmt empty;
         };
 
-        class IfElse : public Stmt {
+        class IfElseBase : public Stmt {
+
+            std::unique_ptr<Stmt> stmt_;
+
+        protected:
+
+            void emit_if() const;
+            virtual void emit_else() const = 0;
 
         public:
 
-            IfElse(std::unique_ptr<Stmt>,
-                std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            IfElseBase(std::unique_ptr<Expr>,
+                std::unique_ptr<Stmt>, unsigned);
             llvm::Value* compile() const override;
+        };
+
+        class If : public IfElseBase {
+
+            static const unsigned num_blocks_ = 2;
+
+        protected:
+
+            void emit_else() const override;
+
+        public:
+
+            If(std::unique_ptr<Expr>, 
+                std::unique_ptr<Stmt>);
+        };
+
+        class IfElse : public IfElseBase {
+
+            static const unsigned num_blocks_ = 3;
+            std::unique_ptr<Stmt> stmt_;
+
+        protected: 
+
+            void emit_else() const override;
+
+        public:
+
+            IfElse(std::unique_ptr<Expr>, 
+                std::unique_ptr<Stmt>, std::unique_ptr<Stmt>);
         };
     }
 }
