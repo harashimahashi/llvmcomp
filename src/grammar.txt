@@ -20,15 +20,16 @@ stmt -> decl;
 	| for_stmt
 	| BREAK;
 	| RETURN bool;
-decl -> decl[NUM]
+decl -> decl[bool]
 	| LET ID
 decl_init -> decl = bool 
 if_stmt -> IF bool IDENT stmts DEIDENT
-	| IF bool IDENT stmts DEIDENT ELSE stmts
+	| IF bool IDENT stmts DEIDENT ELSE IDENT stmts DEIDENT
 while_stmt -> WHILE bool IDENT stmts DEIDENT
 repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool;
-for_stmt -> FOR bool TO bool IDENT stmts DEIDENT
-	| FOR bool DOWNTO bool IDENT stmts DEIDENT
+for_stmt -> FOR decl_init TO bool IDENT stmts DEIDENT
+	| FOR decl_init DOWNTO bool IDENT stmts DEIDENT
+assign -> access_expr = bool;
 bool -> bool || join
 	| join
 join -> join && equality
@@ -49,8 +50,6 @@ term -> term * unary
 	| unary
 unary -> !unary
 	| -unary
-	| assign
-assign -> access_expr = bool
 	| factor
 factor -> (bool)
  	| NUM
