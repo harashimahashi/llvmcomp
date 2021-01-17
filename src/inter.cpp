@@ -39,13 +39,36 @@ namespace llvmc {
 
         Id::Id(std::unique_ptr<Token> t, Value* v) 
             : Expr{ std::move(t) }, var_{ v } {}
+        std::unique_ptr<Id> Id::get_id(std::unique_ptr<Token> t) {
+
+            Value* V = Parser::Builder.CreateAlloca(
+                        Parser::Builder.getDoubleTy(), nullptr);
+
+            return std::unique_ptr<Id>{ new Id{ std::move(t), V } };
+        }
         Value* Id::compile() const {
 
             return var_;
         }
 
-        Array::Array(std::unique_ptr<lexer::Token> t, Value* v, unsigned u) 
+        Array::Array(std::unique_ptr<lexer::Token> t, Value* v, size_t u) 
             : Id{ std::move(t), v }, dim_{ u }  {}
+        std::unique_ptr<Array> Array::get_array(
+            std::unique_ptr<lexer::Token> t, IndexList L) {
+
+            size_t sz = L.size();
+            Type* T = ArrayType::get(
+                        Parser::Builder.getDoubleTy(), L.pop_back_val());
+
+            while(L.size()) {
+
+                T = ArrayType::get(T, L.pop_back_val());
+            }
+
+            Value* V = Parser::Builder.CreateAlloca(T, nullptr);
+
+            return std::unique_ptr<Array>{ new Array{ std::move(t), V, sz} };
+        }
         Value* Array::compile() const {
 
             return Id::compile();
@@ -98,7 +121,7 @@ namespace llvmc {
             if(auto I = dynamic_cast<Array*>(id); I) {
                 
                 if(!vec.size()) {
-                    for(unsigned i = 0; i < I->dim_ + 1; i++) 
+                    for(size_t i = 0; i < I->dim_ + 1; i++) 
                         args_.emplace_back(Parser::Builder.getInt32(0));
                 }
                 else
@@ -106,10 +129,26 @@ namespace llvmc {
 
             }
         }
-
         Value* Access::compile() const {
             
             return Parser::Builder.CreateGEP(arr_, args_);
+        }
+
+        Load::Load(std::unique_ptr<Expr> e) noexcept 
+            : Op{ nullptr }, acc_{ std::move(e) } {}
+        Value* Load::compile() const {
+
+            return Parser::Builder.CreateLoad(acc_->compile());
+        }
+
+        Store::Store(std::unique_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept 
+            : Op{ nullptr }, acc_{ std::move(e) }, val_{ std::move(s) } {}
+        Value* Store::compile() const {
+
+            Value* V = acc_->compile();
+            Parser::Builder.CreateStore(val_->compile(), V);
+
+            return V;
         }
 
         Constant::Constant(double d) noexcept : Expr{ std::make_unique<Num>(d) } {}
@@ -188,53 +227,168 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        BBList Stmt::compute_bb() {
+        BBList Stmt::compute_bb(unsigned cnt) {
             
             BBList temp{};
+            Function* par = Parser::Builder.GetInsertBlock()->getParent();
 
-            if(expr_) {
-
-                Function* par = Parser::Builder.GetInsertBlock()->getParent();
-                unsigned blocks = stmt2_ ? 3 : 2;
-
-                for(unsigned i = 0; i < blocks; i++) {
-                    temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
-                }
+            for(unsigned i = 0; i < cnt; i++) {
+                temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
             }
 
             return temp;
         }
-        Stmt::Stmt(std::unique_ptr<Stmt> s1, std::unique_ptr<Expr> e = nullptr,
-            std::unique_ptr<Stmt> s2 = nullptr) : stmt1_{ std::move(s1) },
-            expr_{ std::move(e) }, stmt2_{ std::move(s2) }, List{ compute_bb() } {}
-        Stmt::Stmt const* const empty = nullptr;
+        Stmt::Stmt(std::unique_ptr<Expr> e, unsigned cnt) 
+            : expr_{ std::move(e) }, List{ compute_bb(cnt) } {}
+        Value* Stmt::compile() const {
 
-        IfElse::IfElse(std::unique_ptr<Stmt> s1,
-            std::unique_ptr<Expr> e = nullptr, std::unique_ptr<Stmt> s2 = nullptr)
-            : Stmt{ std::move(s1), std::move(e), std::move(s2)} {}
-        Value* IfElse::compile() const {
+            if(expr_)
+                return expr_->compile();
 
-            Value* E = Parser::Builder.CreateFPToUI(
-                expr_->compile(), Parser::Builder.getInt1Ty());
+            return nullptr;
+        }
+        const Stmt Stmt::empty{};
+
+        IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
+            std::unique_ptr<Stmt> s, unsigned cnt) 
+            : Stmt{ std::move(e), cnt }, stmt_{ std::move(s) } {}
+        void IfElseBase::emit_if() const {
             
+            Value* E = Parser::Builder.CreateFPToUI(
+                Stmt::compile(), Parser::Builder.getInt1Ty());
+
             Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
             Parser::Builder.SetInsertPoint(List[0]);
-            stmt1_->compile();
-            if(stmt2_) {
+            stmt_->compile();
 
-                Parser::Builder.CreateBr(List[1]);
-                Parser::Builder.SetInsertPoint(List[1]);
+            Parser::Builder.CreateBr(List.back());
+        }
+        llvm::Value* IfElseBase::compile() const { 
+
+            emit_if();
+            emit_else();
+
+            Parser::Builder.SetInsertPoint(List.back());
+
+            return nullptr;
+        }
+
+        If::If(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s)
+            : IfElseBase{ std::move(e), std::move(s), num_blocks_ } {}
+        void If::emit_else() const {}
+
+        IfElse::IfElse(std::unique_ptr<Expr> e, 
+            std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
+            : IfElseBase{ std::move(e), std::move(s1), num_blocks_ },
+            stmt_{ std::move(s2) } {}
+        void IfElse::emit_else() const {
+
+            Parser::Builder.SetInsertPoint(List[1]);
+            stmt_->compile();
+
+            Parser::Builder.CreateBr(List.back());
+        }
+
+        LoopBase::LoopBase(std::unique_ptr<Expr> e,
+            std::unique_ptr<Stmt> s, unsigned cnt) 
+            : Stmt{ std::move(e), cnt } {}
+        Value* LoopBase::emit_preloop() const {
+
+            return nullptr;
+        }
+        void LoopBase::emit_cond(
+            llvm::BasicBlock* const b1, llvm::BasicBlock* const b2) const {
+
+            Value* E = Parser::Builder.CreateFPToUI(
+                Stmt::compile(), Parser::Builder.getInt1Ty());
+
+            Parser::Builder.CreateCondBr(E, b1, b2);
+        }
+        void LoopBase::emit_body() const {
+
+            stmt_->compile();
+        }
+        Value* LoopBase::compile() const {
+
+            Parser::Builder.CreateBr(List[0]);
+            Parser::Builder.SetInsertPoint(List[0]);
+
+            return nullptr;
+        }
+
+        While::While(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) 
+            : LoopBase{ std::move(e), std::move(s), num_blocks_ } {}
+        void While::emit_head(Value*) const {}
+        Value* While::compile() const {
+
+            LoopBase::compile();
+
+            emit_cond(List[1], List[2]);
+
+            Parser::Builder.SetInsertPoint(List[1]);
+            emit_body();
+            Parser::Builder.CreateBr(List[0]);
+
+            Parser::Builder.SetInsertPoint(List[2]);
+
+            return nullptr;
+        }
+
+        RepeatUntil::RepeatUntil(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s)
+            : LoopBase{ std::move(e), std::move(s), num_blocks_ } {}
+        void RepeatUntil::emit_head(Value*) const {}
+        Value* RepeatUntil::compile() const {
+
+            LoopBase::compile();
+
+            emit_body();
+            emit_cond(List[0], List[1]);
+
+            Parser::Builder.SetInsertPoint(List[1]);
+
+            return nullptr;
+        }
+
+        For::For(std::unique_ptr<Expr> e,
+            std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
+            : LoopBase{ std::move(e), std::move(s1), num_blocks_ }, 
+            stmt_{ std::move(s2) } {}
+        Value* For::emit_preloop() const {
+
+            return stmt_->compile();
+        }
+        void For::emit_head(Value* v) const {
+
+            Value* L = Parser::Builder.CreateLoad(v);
+
+            Value* V;
+
+            if(to_downto_) {
+                V = Parser::Builder.CreateFAdd(L, Constant{ 1.0 }.compile());
             }
             else {
-
-                Parser::Builder.SetInsertPoint(List[1]);
-                stmt2_->compile();
-                Parser::Builder.CreateBr(List[2]);
-                Parser::Builder.SetInsertPoint(List[2]);
+                V = Parser::Builder.CreateFSub(L, Constant{ 1.0 }.compile());
             }
-            
-            return List[2];
+
+            Parser::Builder.CreateStore(V, v);
+        }
+        Value* For::compile() const {
+
+            Value* V = emit_preloop();
+
+            LoopBase::compile();
+
+            emit_cond(List[1], List[2]);
+
+            Parser::Builder.SetInsertPoint(List[1]);
+            emit_body();
+            emit_head(V);
+            Parser::Builder.CreateBr(List[0]);
+
+            Parser::Builder.SetInsertPoint(List[2]);
+
+            return nullptr;
         }
     }
 }

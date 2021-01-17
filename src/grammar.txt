@@ -13,6 +13,7 @@ stmts -> stmts stmt
 	| stmt
 stmt -> decl;
 	| decl_init;
+	| assign
 	| bool;
 	| if_stmt
 	| while_stmt
@@ -23,13 +24,13 @@ stmt -> decl;
 decl -> decl[bool]
 	| LET ID
 decl_init -> decl = bool 
+assign -> access_expr = bool;
 if_stmt -> IF bool IDENT stmts DEIDENT
 	| IF bool IDENT stmts DEIDENT ELSE IDENT stmts DEIDENT
 while_stmt -> WHILE bool IDENT stmts DEIDENT
 repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool;
 for_stmt -> FOR decl_init TO bool IDENT stmts DEIDENT
 	| FOR decl_init DOWNTO bool IDENT stmts DEIDENT
-assign -> access_expr = bool;
 bool -> bool || join
 	| join
 join -> join && equality
