@@ -168,6 +168,7 @@ namespace llvmc {
 
             const BBList List;
             static const Stmt empty;
+            static Stmt* enclosing;
         };
 
         class IfElseBase : public Stmt {
@@ -281,6 +282,24 @@ namespace llvmc {
 
             void set_to();
             void set_downto();
+        };
+
+        class Break : public Stmt {
+
+            Stmt* stmt_;
+
+        public:
+
+            Break();
+            llvm::Value* compile() const override;
+        };
+
+        class Return : public Stmt {
+
+        public:
+
+            Return(std::unique_ptr<Expr>);
+            llvm::Value* compile() const override;
         };
     }
 }

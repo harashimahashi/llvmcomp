@@ -248,6 +248,7 @@ namespace llvmc {
             return nullptr;
         }
         const Stmt Stmt::empty{};
+        Stmt* Stmt::enclosing = nullptr;
 
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s, unsigned cnt) 
@@ -387,6 +388,25 @@ namespace llvmc {
             Parser::Builder.CreateBr(List[0]);
 
             Parser::Builder.SetInsertPoint(List[2]);
+
+            return nullptr;
+        }
+
+        Break::Break() {
+
+            stmt_ = Stmt::enclosing;
+        }
+        Value* Break::compile() const {
+
+            Parser::Builder.CreateBr(stmt_->List.back());
+
+            return nullptr;
+        }
+
+        Return::Return(std::unique_ptr<Expr> e) : Stmt{ std::move(e) } {}
+        Value* Return::compile() const {
+            
+            Parser::Builder.CreateRet(Stmt::compile());
 
             return nullptr;
         }
