@@ -358,6 +358,14 @@ namespace llvmc {
             std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
             : LoopBase{ std::move(e), std::move(s1), num_blocks_ }, 
             stmt_{ std::move(s2) } {}
+        void For::set_to() {
+            
+            to_downto_ = true;
+        }
+        void For::set_downto() {
+
+            to_downto_ = false;
+        }
         Value* For::emit_preloop() const {
 
             return stmt_->compile();
