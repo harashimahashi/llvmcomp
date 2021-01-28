@@ -113,22 +113,22 @@ namespace llvmc {
 
         class Load : public Op {
 
-            std::unique_ptr<Expr> acc_;
+            std::shared_ptr<Expr> acc_;
 
         public:
 
-            Load(std::unique_ptr<Expr>) noexcept;
+            Load(std::shared_ptr<Expr>) noexcept;
             llvm::Value* compile() const override;
         };
 
         class Store : public Op {
 
-            std::unique_ptr<Expr> acc_;
+            std::shared_ptr<Expr> acc_;
             std::unique_ptr<Expr> val_;
 
         public:
 
-            Store(std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            Store(std::shared_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() const override;
         };
 
@@ -136,7 +136,7 @@ namespace llvmc {
 
         public:
 
-            Constant(double) noexcept;
+            Constant(std::unique_ptr<lexer::Token>) noexcept;
             llvm::Value* compile() const override;
         };
 

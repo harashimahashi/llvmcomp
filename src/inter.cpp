@@ -119,7 +119,7 @@ namespace llvmc {
         Access::Access(Id* id, ValList vec = {}) : Op{ nullptr }, 
             arr_{ id->compile() } {
 
-            if(auto I = dynamic_cast<Array*>(id); I) {
+            if(auto I = dynamic_cast<Array*>(id)) {
                 
                 if(!vec.size()) {
                     for(size_t i = 0; i < I->dim_ + 1; i++) 
@@ -135,15 +135,15 @@ namespace llvmc {
             return Parser::Builder.CreateGEP(arr_, args_);
         }
 
-        Load::Load(std::unique_ptr<Expr> e) noexcept 
-            : Op{ nullptr }, acc_{ std::move(e) } {}
+        Load::Load(std::shared_ptr<Expr> e) noexcept 
+            : Op{ nullptr }, acc_{ e } {}
         Value* Load::compile() const {
 
             return Parser::Builder.CreateLoad(acc_->compile());
         }
 
-        Store::Store(std::unique_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept 
-            : Op{ nullptr }, acc_{ std::move(e) }, val_{ std::move(s) } {}
+        Store::Store(std::shared_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
+            : Op{ nullptr }, acc_{ e }, val_{ std::move(s) } {}
         Value* Store::compile() const {
 
             Value* V = acc_->compile();
@@ -152,7 +152,7 @@ namespace llvmc {
             return V;
         }
 
-        Constant::Constant(double d) noexcept : Expr{ std::make_unique<Num>(d) } {}
+        Constant::Constant(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
         Value* Constant::compile() const {
 
             return ConstantFP::get(Parser::Context, 
@@ -362,20 +362,20 @@ namespace llvmc {
 
             return stmt_->compile();
         }
-        void For::emit_head(Value* v) const {
+        void For::emit_head(Value* V) const {
 
-            Value* L = Parser::Builder.CreateLoad(v);
+            Value* L = Parser::Builder.CreateLoad(V);
 
-            Value* V;
+            Value* Step;
 
-            if(to_downto_) {
-                V = Parser::Builder.CreateFAdd(L, Constant{ 1.0 }.compile());
-            }
-            else {
-                V = Parser::Builder.CreateFSub(L, Constant{ 1.0 }.compile());
-            }
-
-            Parser::Builder.CreateStore(V, v);
+            if(auto change = std::make_unique<Num>(1.0); to_downto_) 
+                Step = Parser::Builder.CreateFAdd(L, 
+                    Constant{ std::move(change) }.compile());
+            else
+                Step = Parser::Builder.CreateFSub(L, 
+                    Constant{ std::move(change) }.compile());
+            
+            Parser::Builder.CreateStore(Step, V);
         }
         Value* For::compile() const {
 
