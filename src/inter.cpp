@@ -33,6 +33,7 @@ namespace llvmc {
         using namespace lexer;
         using namespace parser;
 
+        DataLayout Node::layout{ Parser::Module.get() };
         Node::~Node() = default;
 
         Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
@@ -238,25 +239,27 @@ namespace llvmc {
 
             return temp;
         }
-        Stmt::Stmt(std::unique_ptr<Expr> e, unsigned cnt) 
-            : expr_{ std::move(e) }, List{ compute_bb(cnt) } {}
-        Value* Stmt::compile() const {
+        Stmt::Stmt(unsigned cnt) : List{ compute_bb(cnt) } {}
+        const Stmt& Stmt::empty = ExprStmt{};
+        Stmt* Stmt::enclosing = nullptr;
 
-            if(expr_)
+        ExprStmt::ExprStmt(std::unique_ptr<Expr> e, unsigned u) 
+            : Stmt{ u }, expr_{ std::move(e) } {}
+        Value* ExprStmt::compile() const {
+
+            if(expr_) 
                 return expr_->compile();
 
             return nullptr;
         }
-        const Stmt Stmt::empty{};
-        Stmt* Stmt::enclosing = nullptr;
 
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s, unsigned cnt) 
-            : Stmt{ std::move(e), cnt }, stmt_{ std::move(s) } {}
+            : ExprStmt{ std::move(e), cnt }, stmt_{ std::move(s) } {}
         void IfElseBase::emit_if() const {
             
             Value* E = Parser::Builder.CreateFPToUI(
-                Stmt::compile(), Parser::Builder.getInt1Ty());
+                ExprStmt::compile(), Parser::Builder.getInt1Ty());
 
             Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
@@ -293,7 +296,7 @@ namespace llvmc {
 
         LoopBase::LoopBase(std::unique_ptr<Expr> e,
             std::unique_ptr<Stmt> s, unsigned cnt) 
-            : Stmt{ std::move(e), cnt } {}
+            : ExprStmt{ std::move(e), cnt } {}
         Value* LoopBase::emit_preloop() const {
 
             return nullptr;
@@ -403,7 +406,7 @@ namespace llvmc {
             return nullptr;
         }
 
-        Return::Return(std::unique_ptr<Expr> e) : Stmt{ std::move(e) } {}
+        Return::Return(std::unique_ptr<Expr> e) : ExprStmt{ std::move(e) } {}
         Value* Return::compile() const {
             
             Parser::Builder.CreateRet(Stmt::compile());
