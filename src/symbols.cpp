@@ -9,11 +9,11 @@ namespace llvmc {
             
             table_.emplace(std::move(l), std::move(i));
         }
-        inter::Id* Env::get(std::string t) {
+        std::shared_ptr<inter::Id> Env::get(std::string t) {
 
             for(Env* e = this; e != nullptr; e = e->prev_.get()) {
                 auto found = table_.find(t);
-                if(found != table_.end()) return found->second.get(); 
+                if(found != table_.end()) return found->second; 
             }
             return nullptr;
         }

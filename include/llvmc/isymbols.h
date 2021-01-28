@@ -9,7 +9,7 @@ namespace llvmc {
 
         class Env {
 
-            std::unordered_map<std::string, std::unique_ptr<inter::Id>> table_;
+            std::unordered_map<std::string, std::shared_ptr<inter::Id>> table_;
             std::shared_ptr<Env> prev_;
 
         public:
@@ -17,7 +17,7 @@ namespace llvmc {
             Env(std::unique_ptr<Env>);
 
             void insert(std::string, std::unique_ptr<inter::Id>);
-            inter::Id* get(std::string);
+            std::shared_ptr<inter::Id> get(std::string);
 
         };
     }
