@@ -144,7 +144,8 @@ namespace llvmc {
         };
 
         class ArrayConstant : public Expr, public IArray {
-
+            
+            static inline unsigned cnt_{0};
             llvm::Constant* carr_;
 
         public: 
@@ -201,12 +202,13 @@ namespace llvmc {
 
         public:
 
-            ExprStmt(std::unique_ptr<Expr> = nullptr, unsigned = 0);
+            ExprStmt(std::unique_ptr<Expr> = nullptr);
             llvm::Value* compile() const override;
         };
 
-        class IfElseBase : public ExprStmt {
-
+        class IfElseBase : public Stmt {
+            
+            std::unique_ptr<Expr> expr_;
             std::unique_ptr<Stmt> stmt_;
 
         protected:
@@ -250,8 +252,9 @@ namespace llvmc {
                 std::unique_ptr<Stmt>, std::unique_ptr<Stmt>);
         };
 
-        class LoopBase : public ExprStmt {
+        class LoopBase : public Stmt {
 
+            std::unique_ptr<Expr> expr_;
             std::unique_ptr<Stmt> stmt_;
 
         protected:

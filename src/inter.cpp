@@ -152,7 +152,8 @@ namespace llvmc {
             return V;
         }
 
-        FConstant::FConstant(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
+        FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
+            : Expr{ std::move(t) } {}
         Value* FConstant::compile() const {
 
             return ConstantFP::get(Parser::Context, 
@@ -161,29 +162,46 @@ namespace llvmc {
 
         ArrayConstant::ArrayConstant(ArrList lst) : Expr{ nullptr } {
 
-            SmallVector<llvm::Constant*, 16> carr;
+            SmallVector<Constant*, 16> carr;
+            auto array_cast = [](auto const& el) {
+                        return dynamic_cast<const ArrayConstant*>(el.get())->carr_;
+                    };
+            auto constant_cast = [](auto const& el) {
+                        return cast<llvm::Constant>(el.get()->compile());
+                    };
+            Type* t;
 
             if(auto A = dynamic_cast<ArrayConstant*>(lst.begin()->get())) {
 
                 std::transform(lst.begin(), lst.end(),
-                    carr.begin(), [](auto const& el) {
-                        return dynamic_cast<const ArrayConstant*>(el.get())->carr_;
-                });
+                    carr.begin(), array_cast);
 
-                carr_ = ConstantArray::get(
-                            ArrayType::get(A->carr_->getType(), lst.size()), carr);
+                t = A->carr_->getType();
             }
             else {
 
                 std::transform(lst.begin(), lst.end(),
-                    carr.begin(), [](auto const& el) {
-                        return cast<llvm::Constant>(el.get()->compile());
-                    });
+                    carr.begin(), constant_cast);
                 
-                carr_ = ConstantArray::get(
-                            ArrayType::get(Parser::Builder.getDoubleTy(), lst.size()),
-                        carr);
+                t = Parser::Builder.getDoubleTy();
             }
+
+            carr_ = ConstantArray::get(ArrayType::get(t, lst.size()), carr);
+        }
+        Value* ArrayConstant::compile() const {
+            
+            std::string name_ = "array" + std::to_string(cnt_);
+
+            Parser::Module->getOrInsertGlobal(name_, carr_->getType());
+            auto garr = Parser::Module->getNamedGlobal("array");
+
+            garr->setLinkage(GlobalValue::LinkageTypes::PrivateLinkage);
+            garr->setConstant(true);
+            garr->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+            garr->setInitializer(carr_);
+            garr->setAlignment(Node::layout.getPrefTypeAlign(carr_->getType()));
+
+            return garr;
         }
 
         Logical::Logical(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
@@ -270,8 +288,7 @@ namespace llvmc {
         const Stmt& Stmt::empty = ExprStmt{};
         Stmt* Stmt::enclosing = nullptr;
 
-        ExprStmt::ExprStmt(std::unique_ptr<Expr> e, unsigned u) 
-            : Stmt{ u }, expr_{ std::move(e) } {}
+        ExprStmt::ExprStmt(std::unique_ptr<Expr> e) : expr_{ std::move(e) } {}
         Value* ExprStmt::compile() const {
 
             if(expr_) 
@@ -282,11 +299,11 @@ namespace llvmc {
 
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s, unsigned cnt) 
-            : ExprStmt{ std::move(e), cnt }, stmt_{ std::move(s) } {}
+            : Stmt{ cnt }, expr_{ std::move(e) }, stmt_{ std::move(s) } {}
         void IfElseBase::emit_if() const {
             
             Value* E = Parser::Builder.CreateFPToUI(
-                ExprStmt::compile(), Parser::Builder.getInt1Ty());
+                expr_->compile(), Parser::Builder.getInt1Ty());
 
             Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
@@ -323,7 +340,7 @@ namespace llvmc {
 
         LoopBase::LoopBase(std::unique_ptr<Expr> e,
             std::unique_ptr<Stmt> s, unsigned cnt) 
-            : ExprStmt{ std::move(e), cnt } {}
+            : Stmt{ cnt }, expr_{ std::move(e) } {}
         Value* LoopBase::emit_preloop() const {
 
             return nullptr;
@@ -332,7 +349,7 @@ namespace llvmc {
             llvm::BasicBlock* const b1, llvm::BasicBlock* const b2) const {
 
             Value* E = Parser::Builder.CreateFPToUI(
-                Stmt::compile(), Parser::Builder.getInt1Ty());
+                expr_->compile(), Parser::Builder.getInt1Ty());
 
             Parser::Builder.CreateCondBr(E, b1, b2);
         }

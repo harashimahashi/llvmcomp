@@ -60,7 +60,7 @@ int main(int argc, char* argv[]){
     Builder.SetInsertPoint(entry);
     
     DataLayout layout{ Module.get() };
-
+    
     std::vector<Value*> printArgs;
     Value *formatStr = Builder.CreateGlobalStringPtr("%lf\n");
     Module->getOrInsertGlobal("array", ArrayType::get(Builder.getDoubleTy(), 2));
