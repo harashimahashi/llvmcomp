@@ -56,6 +56,8 @@ namespace llvmc {
         public:
 
             virtual llvm::Type* get_type() const = 0;
+
+            static inline const uint64_t kByteSize = 8;
         };
 
         class Array : public Id, public IArray {
