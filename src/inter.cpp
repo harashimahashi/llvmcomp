@@ -159,6 +159,29 @@ namespace llvmc {
                 APFloat(static_cast<double>(*dynamic_cast<const Num*>(op_.get()))));
         }
 
+        ArrayConstant::ArrayConstant(ArrList lst) : Expr{ nullptr } {
+
+            SmallVector<llvm::Constant*, 16> carr;
+
+            if(auto A = dynamic_cast<ArrayConstant*>(lst.begin()->get())) {
+
+                std::transform(lst.begin(), lst.end(),
+                    carr.begin(), [](auto const& el) {
+                        return dynamic_cast<const ArrayConstant*>(el.get())->carr_;
+                });
+
+                carr_ = ConstantArray::get(
+                        ArrayType::get(A->carr_->getType(), lst.size()), carr);
+            }
+            else {
+
+                std::transform(lst.begin(), lst.end(),
+                    carr.begin(), [](auto const& el) {
+                        return cast<llvm::Constant>(el.get()->compile());
+                    });
+            }
+        }
+
         Logical::Logical(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
             std::unique_ptr<Expr> e2) noexcept : Expr{ std::move(t) },
             lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}

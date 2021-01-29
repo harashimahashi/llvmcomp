@@ -12,6 +12,7 @@ namespace llvmc {
         using IndexList = llvm::SmallVector<uint64_t, 8>;
         using ValList = llvm::SmallVector<llvm::Value*, 8>; 
 
+
         class Node {
 
         protected:
@@ -33,6 +34,8 @@ namespace llvmc {
             const std::unique_ptr<const lexer::Token> op_;
         };
 
+        using ArrList = llvm::SmallVector<std::unique_ptr<Expr>, 16>;
+        
         class Id : public Expr {
 
             llvm::Value* var_;
@@ -48,14 +51,14 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class TypeArray {
+        class IArray {
 
         public:
 
             virtual llvm::Type* get_type() const = 0;
         };
 
-        class Array : public Id, public TypeArray {
+        class Array : public Id, public IArray {
 
         protected:
 
@@ -138,6 +141,17 @@ namespace llvmc {
 
             Constant(std::unique_ptr<lexer::Token>) noexcept;
             llvm::Value* compile() const override;
+        };
+
+        class ArrayConstant : public Expr, public IArray {
+
+            llvm::Constant* carr_;
+
+        public: 
+
+            ArrayConstant(ArrList);
+            llvm::Value* compile() const override;
+            llvm::Type* get_type() const override;
         };
 
         class Logical : public Expr {
