@@ -152,8 +152,8 @@ namespace llvmc {
             return V;
         }
 
-        Constant::Constant(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
-        Value* Constant::compile() const {
+        FConstant::FConstant(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
+        Value* FConstant::compile() const {
 
             return ConstantFP::get(Parser::Context, 
                 APFloat(static_cast<double>(*dynamic_cast<const Num*>(op_.get()))));
@@ -171,7 +171,7 @@ namespace llvmc {
                 });
 
                 carr_ = ConstantArray::get(
-                        ArrayType::get(A->carr_->getType(), lst.size()), carr);
+                            ArrayType::get(A->carr_->getType(), lst.size()), carr);
             }
             else {
 
@@ -179,6 +179,10 @@ namespace llvmc {
                     carr.begin(), [](auto const& el) {
                         return cast<llvm::Constant>(el.get()->compile());
                     });
+                
+                carr_ = ConstantArray::get(
+                            ArrayType::get(Parser::Builder.getDoubleTy(), lst.size()),
+                        carr);
             }
         }
 
@@ -401,10 +405,10 @@ namespace llvmc {
 
             if(auto change = std::make_unique<Num>(1.0); to_downto_) 
                 Step = Parser::Builder.CreateFAdd(L, 
-                    Constant{ std::move(change) }.compile());
+                    FConstant{ std::move(change) }.compile());
             else
                 Step = Parser::Builder.CreateFSub(L, 
-                    Constant{ std::move(change) }.compile());
+                    FConstant{ std::move(change) }.compile());
             
             Parser::Builder.CreateStore(Step, V);
         }

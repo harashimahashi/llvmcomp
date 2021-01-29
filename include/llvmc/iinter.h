@@ -135,11 +135,11 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class Constant : public Expr {
+        class FConstant : public Expr {
 
         public:
 
-            Constant(std::unique_ptr<lexer::Token>) noexcept;
+            FConstant(std::unique_ptr<lexer::Token>) noexcept;
             llvm::Value* compile() const override;
         };
 
