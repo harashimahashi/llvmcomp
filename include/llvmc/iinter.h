@@ -12,6 +12,7 @@ namespace llvmc {
         using IndexList = llvm::SmallVector<uint64_t, 8>;
         using ValList = llvm::SmallVector<llvm::Value*, 8>; 
 
+
         class Node {
 
         protected:
@@ -33,6 +34,8 @@ namespace llvmc {
             const std::unique_ptr<const lexer::Token> op_;
         };
 
+        using ArrList = llvm::SmallVector<std::unique_ptr<Expr>, 16>;
+        
         class Id : public Expr {
 
             llvm::Value* var_;
@@ -48,18 +51,24 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class TypeArray {
+        class IArray {
 
         public:
 
             virtual llvm::Type* get_type() const = 0;
+            virtual llvm::Align get_align() const = 0;
+
+            static inline const uint64_t kByteSize = 8;
         };
 
-        class Array : public Id, public TypeArray {
+        class Array : public Id, public IArray {
+
+            llvm::Align align_;
 
         protected:
 
-            Array(std::unique_ptr<lexer::Token>, llvm::Value*, size_t);
+            Array(std::unique_ptr<lexer::Token>,
+                llvm::Value*, size_t, llvm::Align);
 
         public:
 
@@ -67,6 +76,7 @@ namespace llvmc {
                 get_array(std::unique_ptr<lexer::Token>, IndexList);
             llvm::Value* compile() const override;
             llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
 
             const size_t dim_;
         };
@@ -132,12 +142,26 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class Constant : public Expr {
+        class FConstant : public Expr {
 
         public:
 
-            Constant(std::unique_ptr<lexer::Token>) noexcept;
+            FConstant(std::unique_ptr<lexer::Token>) noexcept;
             llvm::Value* compile() const override;
+        };
+
+        class ArrayConstant : public Expr, public IArray {
+            
+            static inline unsigned cnt_{0};
+            llvm::Constant* carr_;
+            llvm::Align align_;
+
+        public: 
+
+            ArrayConstant(ArrList);
+            llvm::Value* compile() const override;
+            llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
         };
 
         class Logical : public Expr {
@@ -187,12 +211,13 @@ namespace llvmc {
 
         public:
 
-            ExprStmt(std::unique_ptr<Expr> = nullptr, unsigned = 0);
+            ExprStmt(std::unique_ptr<Expr> = nullptr);
             llvm::Value* compile() const override;
         };
 
-        class IfElseBase : public ExprStmt {
-
+        class IfElseBase : public Stmt {
+            
+            std::unique_ptr<Expr> expr_;
             std::unique_ptr<Stmt> stmt_;
 
         protected:
@@ -236,8 +261,9 @@ namespace llvmc {
                 std::unique_ptr<Stmt>, std::unique_ptr<Stmt>);
         };
 
-        class LoopBase : public ExprStmt {
+        class LoopBase : public Stmt {
 
+            std::unique_ptr<Expr> expr_;
             std::unique_ptr<Stmt> stmt_;
 
         protected:
@@ -314,7 +340,9 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class Return : public ExprStmt {
+        class Return : public Stmt {
+
+            std::unique_ptr<Expr> expr_;
 
         public:
 

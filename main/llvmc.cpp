@@ -59,16 +59,21 @@ int main(int argc, char* argv[]){
     
     Builder.SetInsertPoint(entry);
     
+    DataLayout layout{ Module.get() };
+    
     std::vector<Value*> printArgs;
     Value *formatStr = Builder.CreateGlobalStringPtr("%lf\n");
-    /* Module->getOrInsertGlobal("array", ArrayType::get(Builder.getInt32Ty(), 4));
+    Module->getOrInsertGlobal("array", ArrayType::get(Builder.getDoubleTy(), 2));
     auto garr = Module->getNamedGlobal("array");
     garr->setLinkage(GlobalValue::LinkageTypes::PrivateLinkage);
     garr->setConstant(true);
-    garr->setUnnamedAddr(GlobalValue::UnnamedAddr::Global); */
+    garr->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+    std::vector<Constant*> cvec{ ConstantFP::get(Builder.getDoubleTy(), APFloat(1.0)), ConstantFP::get(Builder.getDoubleTy(), APFloat(2.0)) };
+    auto carr = ConstantArray::get(ArrayType::get(Builder.getDoubleTy(), 2), cvec);
+    garr->setInitializer(carr);
+    garr->setAlignment(layout.getPrefTypeAlign(carr->getType()));
     
     printArgs.push_back(formatStr);
-    printArgs.push_back(ConstantFP::get(Context, APFloat(1.0)));
     //Builder.CreateCall(Module->getFunction("printf"), printArgs);
     auto arr = Builder.CreateAlloca(ArrayType::get(Builder.getDoubleTy(), 2), nullptr, "someArr");
     auto arr1 = Builder.CreateAlloca(ArrayType::get(Builder.getDoubleTy(), 2), nullptr, "someArr");
@@ -84,33 +89,9 @@ int main(int argc, char* argv[]){
     auto afgep = cast<ArrayType>(cast<PointerType>(cast<GetElementPtrInst>(tgep)->getPointerOperandType())->getElementType());
 
     Builder.CreateMemCpy(
-        Builder.CreateGEP(arr1, gep_arg), arr1->getAlign(),
-        Builder.CreateGEP(arr, gep_arg), arr->getAlign(), 
-        arrref->getElementType()->getPrimitiveSizeInBits()
-        * arrref->getArrayNumElements() / 8);
-    
-    auto bb1 = BasicBlock::Create(Context, "", main);
-    auto bb2 = BasicBlock::Create(Context, "", main);
-    auto bb3 = BasicBlock::Create(Context, "", main);
-
-    auto l1 = Builder.CreateLoad(Builder.CreateGEP(arr, gep_arg));
-    gep_arg[1] = Builder.getInt32(1);
-    auto l2 = Builder.CreateLoad(Builder.CreateGEP(arr, gep_arg));
-
-    auto cond = Builder.CreateFCmpULT(l1, l2);
-
-    Builder.CreateCondBr(Builder.CreateFPToUI(Builder.CreateUIToFP(cond, Builder.getDoubleTy()), Builder.getInt1Ty()), bb1, bb2);
-
-    Builder.SetInsertPoint(bb1);
-    Builder.CreateCall(Module->getFunction("printf"), printArgs);
-    Builder.CreateBr(bb3);
-
-    printArgs[1] = ConstantFP::get(Context, APFloat(2.0));
-    Builder.SetInsertPoint(bb2);
-    Builder.CreateCall(Module->getFunction("printf"), printArgs);
-    Builder.CreateBr(bb3);
-
-    Builder.SetInsertPoint(bb3);
+        arr1, arr1->getAlign(),
+        garr, garr->getAlign(), 
+        layout.getTypeStoreSizeInBits(arrref) / 8);
 
     Builder.CreateRet(ConstantInt::get(Context, APInt(32, 0)));
 
