@@ -91,7 +91,7 @@ int main(int argc, char* argv[]){
     Builder.CreateMemCpy(
         arr1, arr1->getAlign(),
         garr, garr->getAlign(), 
-        layout.getTypeStoreSizeInBits(arrref) / 8);
+        layout.getTypeSizeInBits(arrref) / 8);
 
     Builder.CreateRet(ConstantInt::get(Context, APInt(32, 0)));
 

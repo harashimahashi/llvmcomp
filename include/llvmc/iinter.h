@@ -12,7 +12,6 @@ namespace llvmc {
         using IndexList = llvm::SmallVector<uint64_t, 8>;
         using ValList = llvm::SmallVector<llvm::Value*, 8>; 
 
-
         class Node {
 
         protected:
@@ -58,6 +57,7 @@ namespace llvmc {
             virtual llvm::Type* get_type() const = 0;
             virtual llvm::Align get_align() const = 0;
 
+            static inline bool is_array(Expr const*);
             static inline const uint64_t kByteSize = 8;
         };
 
@@ -123,12 +123,24 @@ namespace llvmc {
 
         class Load : public Op {
 
-            std::shared_ptr<Expr> acc_;
+            std::shared_ptr<Id> acc_;
 
         public:
 
-            Load(std::shared_ptr<Expr>) noexcept;
+            Load(std::shared_ptr<Id>) noexcept;
             llvm::Value* compile() const override;
+        };
+
+        class ArrayLoad : public Op, public IArray {
+
+            std::shared_ptr<Array> acc_;
+
+        public:
+
+            ArrayLoad(std::shared_ptr<Id>) noexcept;
+            llvm::Value* compile() const override;
+            llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
         };
 
         class Store : public Op {

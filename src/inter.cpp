@@ -3,14 +3,6 @@
 
 namespace {
 
-    bool is_array(llvmc::inter::Expr const* E) {
-
-        if(auto A = dynamic_cast<llvmc::inter::IArray const*>(E))
-            return true;
-        
-        return false;
-    }
-
     llvm::Value* LogErrorV(std::string s) {
         
         llvm::errs() << "Compile error:" << 
@@ -45,6 +37,14 @@ namespace llvmc {
         Value* Id::compile() const {
 
             return var_;
+        }
+
+        bool IArray::is_array(Expr const* E) {
+
+            if(auto A = dynamic_cast<IArray const*>(E))
+                return true;
+            
+            return false;
         }
 
         Array::Array(std::unique_ptr<lexer::Token> t, Value* V, size_t u, Align a) 
@@ -86,7 +86,7 @@ namespace llvmc {
             lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
         Value* Arith::compile() const {
             
-            if(!is_array(lhs_.get()) && !is_array(rhs_.get())) {
+            if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
    
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
@@ -111,7 +111,7 @@ namespace llvmc {
             : Op{ std::move(t) }, exp_{ std::move(e) } {}
         Value* Unary::compile() const {
 
-            if(!is_array(exp_.get())) {
+            if(!IArray::is_array(exp_.get())) {
 
                 Value* E = exp_->compile();
 
@@ -122,26 +122,32 @@ namespace llvmc {
         }
 
         Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
-            arr_{ id->compile() } {
-
-            if(auto I = dynamic_cast<Array*>(id)) {
-
-                args_ = std::move(vec);
-            }
-        }
+            arr_{ id->compile() }, args_{ std::move(vec) } {}
         Value* Access::compile() const {
             
             return Parser::Builder.CreateGEP(arr_, args_);
         }
 
-        Load::Load(std::shared_ptr<Expr> e) noexcept 
+        Load::Load(std::shared_ptr<Id> e) noexcept 
             : Op{ nullptr }, acc_{ e } {}
         Value* Load::compile() const {
 
-            if(!is_array(acc_.get()))
-                return Parser::Builder.CreateLoad(acc_->compile());
+            return Parser::Builder.CreateLoad(acc_->compile());
+        }
+
+        ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) 
+            : Op{ nullptr }, acc_{ std::static_pointer_cast<Array>(e) } {}
+        Value* ArrayLoad::compile() const {
 
             return acc_->compile();
+        }
+        Type* ArrayLoad::get_type() const {
+
+            return acc_->get_type();
+        }
+        Align ArrayLoad::get_align() const {
+
+            return acc_->get_align();
         }
 
         Store::Store(std::shared_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
@@ -151,7 +157,7 @@ namespace llvmc {
             Value* Acc = acc_->compile();
             Value* Val = val_->compile();
 
-            if(!is_array(acc_.get()) && !is_array(val_.get())){
+            if(!IArray::is_array(acc_.get()) && !IArray::is_array(val_.get())){
         
                 Parser::Builder.CreateStore(Val, Acc);
             }
@@ -185,7 +191,7 @@ namespace llvmc {
         Value* FConstant::compile() const {
 
             return ConstantFP::get(Parser::Context, 
-                APFloat(static_cast<double>(*dynamic_cast<const Num*>(op_.get()))));
+                APFloat(static_cast<double>(*dynamic_cast<Num const*>(op_.get()))));
         }
 
         ArrayConstant::ArrayConstant(ArrList lst) : Expr{ nullptr } {
@@ -193,7 +199,7 @@ namespace llvmc {
             SmallVector<Constant*, 16> carr;
             bool c_err{ false };
             auto array_cast = [](auto const& el) {
-                        return dynamic_cast<const ArrayConstant*>(el.get())->carr_;
+                        return dynamic_cast<ArrayConstant const*>(el.get())->carr_;
                     };
             auto constant_cast = [&c_err](auto const& el) {
                         
@@ -206,7 +212,7 @@ namespace llvmc {
                     };
             Type* T;
 
-            if(auto A = dynamic_cast<ArrayConstant*>(lst.begin()->get())) {
+            if(auto A = dynamic_cast<ArrayConstant const*>(lst.begin()->get())) {
 
                 std::transform(lst.begin(), lst.end(),
                     std::back_inserter(carr), array_cast);
@@ -260,12 +266,12 @@ namespace llvmc {
             std::move(e1), std::move(e2) } {}
         Value* Bool::compile() const {
 
-            if(!is_array(lhs_.get()) && !is_array(rhs_.get())) {
+            if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
 
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
-                if(auto W = dynamic_cast<const Word*>(op_.get()); W) {
+                if(auto W = dynamic_cast<Word const*>(op_.get()); W) {
 
                     if(*W == Word::Or) 
                         L = Parser::Builder.CreateOr(L, R, "subor");
@@ -307,7 +313,7 @@ namespace llvmc {
             : Logical{ std::move(t), std::move(e1), nullptr } {}
         Value* Not::compile() const {
 
-            if(!is_array(lhs_.get())) {    
+            if(!IArray::is_array(lhs_.get())) {    
 
                 Value* E = lhs_->compile();
 
