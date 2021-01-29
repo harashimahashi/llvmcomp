@@ -33,8 +33,8 @@ namespace llvmc {
 
         Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
 
-        Id::Id(std::unique_ptr<Token> t, Value* v) 
-            : Expr{ std::move(t) }, var_{ v } {}
+        Id::Id(std::unique_ptr<Token> t, Value* V) 
+            : Expr{ std::move(t) }, var_{ V } {}
         std::unique_ptr<Id> Id::get_id(std::unique_ptr<Token> t) {
 
             Value* V = Parser::Builder.CreateAlloca(
@@ -47,8 +47,8 @@ namespace llvmc {
             return var_;
         }
 
-        Array::Array(std::unique_ptr<lexer::Token> t, Value* v, size_t u) 
-            : Id{ std::move(t), v }, dim_{ u }  {}
+        Array::Array(std::unique_ptr<lexer::Token> t, Value* V, size_t u, Align a) 
+            : Id{ std::move(t), V }, dim_{ u }, align_{ a } {}
         std::unique_ptr<Array> Array::get_array(
             std::unique_ptr<lexer::Token> t, IndexList L) {
 
@@ -61,9 +61,10 @@ namespace llvmc {
                 T = ArrayType::get(T, L.pop_back_val());
             }
 
-            Value* V = Parser::Builder.CreateAlloca(T, nullptr);
+            auto V = Parser::Builder.CreateAlloca(T, nullptr);
+            auto A = V->getAlign();
 
-            return std::unique_ptr<Array>{ new Array{ std::move(t), V, sz} };
+            return std::unique_ptr<Array>{ new Array{ std::move(t), V, sz, A } };
         }
         Value* Array::compile() const {
 
@@ -72,6 +73,10 @@ namespace llvmc {
         Type* Array::get_type() const {
 
             return cast<AllocaInst>(Id::compile())->getAllocatedType();
+        }
+        Align Array::get_align() const {
+
+            return align_;
         }
 
         Op::Op(std::unique_ptr<Token> t) noexcept : Expr{ std::move(t) } {}
@@ -116,18 +121,12 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        Access::Access(Id* id, ValList vec = {}) : Op{ nullptr }, 
+        Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
             arr_{ id->compile() } {
 
             if(auto I = dynamic_cast<Array*>(id)) {
-                
-                if(!vec.size()) {
-                    for(size_t i = 0; i < I->dim_ + 1; i++) 
-                        args_.emplace_back(Parser::Builder.getInt32(0));
-                }
-                else
-                    args_ = std::move(vec);
 
+                args_ = std::move(vec);
             }
         }
         Value* Access::compile() const {
@@ -139,17 +138,46 @@ namespace llvmc {
             : Op{ nullptr }, acc_{ e } {}
         Value* Load::compile() const {
 
-            return Parser::Builder.CreateLoad(acc_->compile());
+            if(!is_array(acc_.get()))
+                return Parser::Builder.CreateLoad(acc_->compile());
+
+            return acc_->compile();
         }
 
         Store::Store(std::shared_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
             : Op{ nullptr }, acc_{ e }, val_{ std::move(s) } {}
         Value* Store::compile() const {
 
-            Value* V = acc_->compile();
-            Parser::Builder.CreateStore(val_->compile(), V);
+            Value* Acc = acc_->compile();
+            Value* Val = val_->compile();
 
-            return V;
+            if(!is_array(acc_.get()) && !is_array(val_.get())){
+        
+                Parser::Builder.CreateStore(Val, Acc);
+            }
+            else {
+
+                auto a_Acc = dynamic_cast<IArray const*>(acc_.get());
+                auto a_Val = dynamic_cast<IArray const*>(val_.get());
+                
+                if(a_Acc && a_Val) {
+
+                    if(auto T = a_Val->get_type(); T == a_Acc->get_type()) {
+
+                        Parser::Builder.CreateMemCpy(
+                            Acc, a_Acc->get_align(),
+                            Val, a_Val->get_align(),
+                            layout.getTypeSizeInBits(T) / IArray::kByteSize);
+                    }
+                    else    
+                        return LogErrorV("incompatible array types");
+
+                }
+                else
+                    return LogErrorV("incompatible types");
+            }
+
+            return Val;
         }
 
         FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
@@ -176,27 +204,28 @@ namespace llvmc {
                         c_err = true;
                         return c_;
                     };
-            Type* t;
+            Type* T;
 
             if(auto A = dynamic_cast<ArrayConstant*>(lst.begin()->get())) {
 
                 std::transform(lst.begin(), lst.end(),
                     std::back_inserter(carr), array_cast);
 
-                t = A->carr_->getType();
+                T = A->carr_->getType();
             }
             else {
 
                 std::transform(lst.begin(), lst.end(),
                     std::back_inserter(carr), constant_cast);
                 
-                t = Parser::Builder.getDoubleTy();
+                T = Parser::Builder.getDoubleTy();
             }
 
             if(c_err)
                 LogErrorV("constant array has non-constant initializer");
 
-            carr_ = ConstantArray::get(ArrayType::get(t, lst.size()), carr);
+            carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
+            align_ = layout.getPrefTypeAlign(carr_->getType());
         }
         Value* ArrayConstant::compile() const {
             
@@ -209,13 +238,17 @@ namespace llvmc {
             garr->setConstant(true);
             garr->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
             garr->setInitializer(carr_);
-            garr->setAlignment(Node::layout.getPrefTypeAlign(get_type()));
+            garr->setAlignment(align_);
 
             return garr;
         }
         Type* ArrayConstant::get_type() const {
 
             return carr_->getType();
+        }
+        Align ArrayConstant::get_align() const {
+
+            return align_;
         }
 
         Logical::Logical(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
@@ -472,10 +505,11 @@ namespace llvmc {
             return nullptr;
         }
 
-        Return::Return(std::unique_ptr<Expr> e) : ExprStmt{ std::move(e) } {}
+        Return::Return(std::unique_ptr<Expr> e) 
+            : expr_{ std::move(e) } {}
         Value* Return::compile() const {
             
-            Parser::Builder.CreateRet(Stmt::compile());
+            Parser::Builder.CreateRet(expr_->compile());
 
             return nullptr;
         }

@@ -56,15 +56,19 @@ namespace llvmc {
         public:
 
             virtual llvm::Type* get_type() const = 0;
+            virtual llvm::Align get_align() const = 0;
 
             static inline const uint64_t kByteSize = 8;
         };
 
         class Array : public Id, public IArray {
 
+            llvm::Align align_;
+
         protected:
 
-            Array(std::unique_ptr<lexer::Token>, llvm::Value*, size_t);
+            Array(std::unique_ptr<lexer::Token>,
+                llvm::Value*, size_t, llvm::Align);
 
         public:
 
@@ -72,6 +76,7 @@ namespace llvmc {
                 get_array(std::unique_ptr<lexer::Token>, IndexList);
             llvm::Value* compile() const override;
             llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
 
             const size_t dim_;
         };
@@ -149,12 +154,14 @@ namespace llvmc {
             
             static inline unsigned cnt_{0};
             llvm::Constant* carr_;
+            llvm::Align align_;
 
         public: 
 
             ArrayConstant(ArrList);
             llvm::Value* compile() const override;
             llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
         };
 
         class Logical : public Expr {
@@ -333,7 +340,9 @@ namespace llvmc {
             llvm::Value* compile() const override;
         };
 
-        class Return : public ExprStmt {
+        class Return : public Stmt {
+
+            std::unique_ptr<Expr> expr_;
 
         public:
 
