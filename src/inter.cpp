@@ -237,10 +237,10 @@ namespace llvmc {
         }
         Value* ArrayConstant::compile() const {
             
-            std::string name_ = "array" + std::to_string(cnt_);
+            std::string name_ = "array" + std::to_string(cnt_++);
 
             Parser::Module->getOrInsertGlobal(name_, get_type());
-            auto garr = Parser::Module->getNamedGlobal("array");
+            auto garr = Parser::Module->getNamedGlobal(name_);
 
             garr->setLinkage(GlobalValue::LinkageTypes::PrivateLinkage);
             garr->setConstant(true);
@@ -331,16 +331,20 @@ namespace llvmc {
         BBList Stmt::compute_bb(unsigned cnt) {
             
             BBList temp{};
-            Function* par = Parser::Builder.GetInsertBlock()->getParent();
 
-            for(unsigned i = 0; i < cnt; i++) {
-                temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
+            if(cnt){
+
+                Function* par = Parser::Builder.GetInsertBlock()->getParent();
+
+                for(unsigned i = 0; i < cnt; i++) {
+                    temp.emplace_back(BasicBlock::Create(Parser::Context, "", par));
+                }
             }
 
             return temp;
         }
         Stmt::Stmt(unsigned cnt) : List{ compute_bb(cnt) } {}
-        //const Stmt& Stmt::empty = ExprStmt{};
+        const Stmt& Stmt::empty = ExprStmt{};
         Stmt* Stmt::enclosing = nullptr;
 
         ExprStmt::ExprStmt(std::unique_ptr<Expr> e) : expr_{ std::move(e) } {}
