@@ -20,7 +20,6 @@ namespace llvmc {
         using namespace lexer;
         using namespace parser;
 
-        DataLayout Node::layout{ Parser::Module.get() };
         Node::~Node() = default;
 
         Expr::Expr(std::unique_ptr<Token> t) noexcept : op_{ std::move(t) } {}
@@ -122,10 +121,13 @@ namespace llvmc {
         }
 
         Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
-            arr_{ id->compile() }, args_{ std::move(vec) } {}
+            arr_{ id ? id->compile() : nullptr }, args_{ std::move(vec) } {}
         Value* Access::compile() const {
             
-            return Parser::Builder.CreateGEP(arr_, args_);
+            if(arr_)
+                return Parser::Builder.CreateGEP(arr_, args_);
+
+            return LogErrorV("trying to access non-array id");
         }
 
         Load::Load(std::shared_ptr<Id> e) noexcept 
@@ -135,7 +137,7 @@ namespace llvmc {
             return Parser::Builder.CreateLoad(acc_->compile());
         }
 
-        ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) 
+        ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) noexcept
             : Op{ nullptr }, acc_{ std::static_pointer_cast<Array>(e) } {}
         Value* ArrayLoad::compile() const {
 
@@ -173,7 +175,7 @@ namespace llvmc {
                         Parser::Builder.CreateMemCpy(
                             Acc, a_Acc->get_align(),
                             Val, a_Val->get_align(),
-                            layout.getTypeSizeInBits(T) / IArray::kByteSize);
+                            Parser::layout.getTypeSizeInBits(T) / IArray::kByteSize);
                     }
                     else    
                         return LogErrorV("incompatible array types");
@@ -231,7 +233,7 @@ namespace llvmc {
                 LogErrorV("constant array has non-constant initializer");
 
             carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
-            align_ = layout.getPrefTypeAlign(carr_->getType());
+            align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
         }
         Value* ArrayConstant::compile() const {
             
@@ -338,7 +340,7 @@ namespace llvmc {
             return temp;
         }
         Stmt::Stmt(unsigned cnt) : List{ compute_bb(cnt) } {}
-        const Stmt& Stmt::empty = ExprStmt{};
+        //const Stmt& Stmt::empty = ExprStmt{};
         Stmt* Stmt::enclosing = nullptr;
 
         ExprStmt::ExprStmt(std::unique_ptr<Expr> e) : expr_{ std::move(e) } {}

@@ -14,10 +14,6 @@ namespace llvmc {
 
         class Node {
 
-        protected:
-
-        static llvm::DataLayout layout;
-
         public:
 
             virtual ~Node();
@@ -226,6 +222,11 @@ namespace llvmc {
             ExprStmt(std::unique_ptr<Expr> = nullptr);
             llvm::Value* compile() const override;
         };
+
+        class FunStmt : public Stmt {
+
+
+        }; 
 
         class IfElseBase : public Stmt {
             
