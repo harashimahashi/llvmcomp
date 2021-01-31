@@ -14,9 +14,9 @@ namespace llvmc {
 
         public:
 
-            Env(std::unique_ptr<Env>);
+            Env(std::shared_ptr<Env>);
 
-            void insert(std::string, std::unique_ptr<inter::Id>);
+            void insert(std::string, std::shared_ptr<inter::Id>);
             std::shared_ptr<inter::Id> get(std::string);
 
         };
