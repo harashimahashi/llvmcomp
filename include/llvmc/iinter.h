@@ -11,6 +11,7 @@ namespace llvmc {
         using BBList = llvm::SmallVector<llvm::BasicBlock*, 4>;
         using IndexList = llvm::SmallVector<uint64_t, 8>;
         using ValList = llvm::SmallVector<llvm::Value*, 8>; 
+        using ArgList = std::vector<std::unique_ptr<lexer::Token>>;
 
         class Node {
 
@@ -29,7 +30,7 @@ namespace llvmc {
             const std::unique_ptr<const lexer::Token> op_;
         };
 
-        using ArrList = llvm::SmallVector<std::unique_ptr<Expr>, 16>;
+        using ArrList = std::vector<std::unique_ptr<Expr>>;
         
         class Id : public Expr {
 
@@ -41,7 +42,7 @@ namespace llvmc {
 
         public:
 
-            static std::unique_ptr<Id> 
+            static std::shared_ptr<Id> 
                 get_id(std::unique_ptr<lexer::Token>);
             llvm::Value* compile() const override;
         };
@@ -68,7 +69,7 @@ namespace llvmc {
 
         public:
 
-            static std::unique_ptr<Array> 
+            static std::shared_ptr<Array> 
                 get_array(std::unique_ptr<lexer::Token>, IndexList);
             llvm::Value* compile() const override;
             llvm::Type* get_type() const override;
@@ -225,7 +226,13 @@ namespace llvmc {
 
         class FunStmt : public Stmt {
 
+            std::string name_;
+            mutable ArgList args_;
 
+        public:
+
+            FunStmt(std::unique_ptr<lexer::Token>, ArgList);
+            llvm::Value* compile() const override;
         }; 
 
         class IfElseBase : public Stmt {

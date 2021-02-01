@@ -26,12 +26,16 @@ namespace llvmc {
 
         Id::Id(std::unique_ptr<Token> t, Value* V) 
             : Expr{ std::move(t) }, var_{ V } {}
-        std::unique_ptr<Id> Id::get_id(std::unique_ptr<Token> t) {
+        std::shared_ptr<Id> Id::get_id(std::unique_ptr<Token> t) {
 
             Value* V = Parser::Builder.CreateAlloca(
                         Parser::Builder.getDoubleTy(), nullptr);
+            std::string name = static_cast<Word*>(t.get())->lexeme_;
 
-            return std::unique_ptr<Id>{ new Id{ std::move(t), V } };
+            auto sp = std::shared_ptr<Id>{ new Id{ std::move(t), V } };
+            Parser::top->insert(name,  sp);
+
+            return sp;
         }
         Value* Id::compile() const {
 
@@ -48,7 +52,7 @@ namespace llvmc {
 
         Array::Array(std::unique_ptr<lexer::Token> t, Value* V, size_t u, Align a) 
             : Id{ std::move(t), V }, dim_{ u }, align_{ a } {}
-        std::unique_ptr<Array> Array::get_array(
+        std::shared_ptr<Array> Array::get_array(
             std::unique_ptr<lexer::Token> t, IndexList L) {
 
             size_t sz = L.size();
@@ -62,8 +66,12 @@ namespace llvmc {
 
             auto V = Parser::Builder.CreateAlloca(T, nullptr);
             auto A = V->getAlign();
+            std::string name = static_cast<Word*>(t.get())->lexeme_;
 
-            return std::unique_ptr<Array>{ new Array{ std::move(t), V, sz, A } };
+            auto sp = std::shared_ptr<Array>{ new Array{ std::move(t), V, sz, A } };
+            Parser::top->insert(name, sp);
+            
+            return sp;
         }
         Value* Array::compile() const {
 
@@ -185,7 +193,7 @@ namespace llvmc {
                     return LogErrorV("incompatible types");
             }
 
-            return Val;
+            return Acc;
         }
 
         FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
@@ -356,6 +364,33 @@ namespace llvmc {
             return nullptr;
         }
 
+        FunStmt::FunStmt(std::unique_ptr<lexer::Token> t, ArgList lst) 
+            : name_{ static_cast<Word*>(t.get())->lexeme_ },
+            args_{ std::move(lst) } {}
+        Value* FunStmt::compile() const {
+            
+            //function arguments
+            SmallVector<Type*, 8> doubles(args_.size(),
+                Parser::Builder.getDoubleTy());
+
+            //create function
+            auto FType = FunctionType::get(
+                Parser::Builder.getDoubleTy(), doubles, false);
+            auto Func = Function::Create(FType,
+                Function::ExternalLinkage, name_, *Parser::Module);
+            auto BB = BasicBlock::Create(Parser::Context, "", Func);
+            Parser::Builder.SetInsertPoint(BB);
+            
+            //emitting function args as variables
+            for(size_t i = 0, sz = args_.size(); i < sz; i++) {
+
+                auto IdPtr = Id::get_id(std::move(args_[i]));
+                Parser::Builder.CreateStore(Func->getArg(i), IdPtr->compile());
+            }
+
+            return nullptr;
+        }
+
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s, unsigned cnt) 
             : Stmt{ cnt }, expr_{ std::move(e) }, stmt_{ std::move(s) } {}
@@ -399,7 +434,7 @@ namespace llvmc {
 
         LoopBase::LoopBase(std::unique_ptr<Expr> e,
             std::unique_ptr<Stmt> s, unsigned cnt) 
-            : Stmt{ cnt }, expr_{ std::move(e) } {}
+            : Stmt{ cnt }, expr_{ std::move(e) }, stmt_{ std::move(s) } {}
         Value* LoopBase::emit_preloop() const {
 
             return nullptr;
@@ -490,6 +525,7 @@ namespace llvmc {
         }
         Value* For::compile() const {
 
+            //init of loop counter
             Value* V = emit_preloop();
 
             LoopBase::compile();
@@ -498,6 +534,7 @@ namespace llvmc {
 
             Parser::Builder.SetInsertPoint(List[1]);
             emit_body();
+            //emitting counter increment/decrement
             emit_head(V);
             Parser::Builder.CreateBr(List[0]);
 
