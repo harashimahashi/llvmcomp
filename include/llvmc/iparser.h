@@ -21,7 +21,6 @@ namespace llvmc {
             static inline std::unique_ptr<llvm::Module> Module{ 
                 std::make_unique<llvm::Module>("module", Context) };
             static inline llvm::DataLayout layout{ Module.get() };
-            static inline std::unordered_map<std::string, llvm::Value*> toplevel_tab;
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
         };
