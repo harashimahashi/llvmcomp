@@ -13,6 +13,8 @@ namespace llvmc {
 
         lexer::Lexer lex;
         std::unique_ptr<lexer::Token> tok;
+
+        void program_preinit();
         
         public:
 
@@ -23,6 +25,9 @@ namespace llvmc {
             static inline llvm::DataLayout layout{ Module.get() };
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
+            Parser(lexer::Lexer l) : lex{ std::move(l) } {}
+
+            void program();
         };
     }
 }
