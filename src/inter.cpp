@@ -432,12 +432,16 @@ namespace llvmc {
             Parser::Builder.CreateBr(List.back());
         }
 
-        LoopBase::LoopBase(std::unique_ptr<Expr> e,
-            std::unique_ptr<Stmt> s, unsigned cnt) 
-            : Stmt{ cnt }, expr_{ std::move(e) }, stmt_{ std::move(s) } {}
+        LoopBase::LoopBase(unsigned cnt) : Stmt{ cnt },
+            expr_{ nullptr }, stmt_{ nullptr } {}
         Value* LoopBase::emit_preloop() const {
 
             return nullptr;
+        }
+        void LoopBase::init(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) {
+
+            expr_ = std::move(e);
+            stmt_ = std::move(s);
         }
         void LoopBase::emit_cond(
             llvm::BasicBlock* const b1, llvm::BasicBlock* const b2) const {
@@ -459,8 +463,11 @@ namespace llvmc {
             return nullptr;
         }
 
-        While::While(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) 
-            : LoopBase{ std::move(e), std::move(s), num_blocks_ } {}
+        While::While() : LoopBase{ num_blocks_ } {}
+        void While::init(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) {
+
+            LoopBase::init(std::move(e), std::move(s));
+        }
         void While::emit_head(Value*) const {}
         Value* While::compile() const {
 
@@ -477,8 +484,11 @@ namespace llvmc {
             return nullptr;
         }
 
-        RepeatUntil::RepeatUntil(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s)
-            : LoopBase{ std::move(e), std::move(s), num_blocks_ } {}
+        RepeatUntil::RepeatUntil() : LoopBase{ num_blocks_ } {}
+        void RepeatUntil::init(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) {
+
+            LoopBase::init(std::move(e), std::move(s));
+        }
         void RepeatUntil::emit_head(Value*) const {}
         Value* RepeatUntil::compile() const {
 
@@ -492,10 +502,13 @@ namespace llvmc {
             return nullptr;
         }
 
-        For::For(std::unique_ptr<Expr> e,
-            std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
-            : LoopBase{ std::move(e), std::move(s1), num_blocks_ }, 
-            stmt_{ std::move(s2) } {}
+        For::For() : LoopBase{ num_blocks_ }, stmt_{ nullptr } {}
+        void For::init(std::unique_ptr<Expr> e,
+            std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) {
+
+            LoopBase::init(std::move(e), std::move(s1));
+            stmt_ = std::move(s2);
+        }
         void For::set_to() {
             
             to_downto_ = true;

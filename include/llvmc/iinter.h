@@ -296,8 +296,8 @@ namespace llvmc {
 
         public:
 
-            LoopBase(std::unique_ptr<Expr>, 
-                std::unique_ptr<Stmt>, unsigned);
+            LoopBase(unsigned);
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() const override;
         };
 
@@ -311,7 +311,8 @@ namespace llvmc {
 
         public:
 
-            While(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            While();
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() const override;
         };
 
@@ -325,7 +326,8 @@ namespace llvmc {
 
         public:
 
-            RepeatUntil(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            RepeatUntil();
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() const override;
         };
 
@@ -342,7 +344,8 @@ namespace llvmc {
 
         public:
 
-            For(std::unique_ptr<Expr>, 
+            For();
+            void init(std::unique_ptr<Expr>,
                 std::unique_ptr<Stmt>, std::unique_ptr<Stmt>);
             llvm::Value* compile() const override;
 
