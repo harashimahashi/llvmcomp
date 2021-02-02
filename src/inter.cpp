@@ -37,7 +37,11 @@ namespace llvmc {
 
             return sp;
         }
-        Value* Id::compile() const {
+        Value* Id::get_val() const {
+
+            return var_;
+        }
+        Value* Id::compile() {
 
             return var_;
         }
@@ -73,13 +77,13 @@ namespace llvmc {
             
             return sp;
         }
-        Value* Array::compile() const {
+        Value* Array::compile() {
 
             return Id::compile();
         }
         Type* Array::get_type() const {
 
-            return cast<AllocaInst>(Id::compile())->getAllocatedType();
+            return cast<AllocaInst>(get_val())->getAllocatedType();
         }
         Align Array::get_align() const {
 
@@ -91,7 +95,7 @@ namespace llvmc {
         Arith::Arith(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
             std::unique_ptr<Expr> e2) noexcept : Op{ std::move(t) },
             lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
-        Value* Arith::compile() const {
+        Value* Arith::compile() {
             
             if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
    
@@ -116,7 +120,7 @@ namespace llvmc {
 
         Unary::Unary(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept
             : Op{ std::move(t) }, exp_{ std::move(e) } {}
-        Value* Unary::compile() const {
+        Value* Unary::compile() {
 
             if(!IArray::is_array(exp_.get())) {
 
@@ -130,7 +134,7 @@ namespace llvmc {
 
         Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
             arr_{ id ? id->compile() : nullptr }, args_{ std::move(vec) } {}
-        Value* Access::compile() const {
+        Value* Access::compile() {
             
             if(arr_)
                 return Parser::Builder.CreateGEP(arr_, args_);
@@ -140,14 +144,14 @@ namespace llvmc {
 
         Load::Load(std::shared_ptr<Id> e) noexcept 
             : Op{ nullptr }, acc_{ e } {}
-        Value* Load::compile() const {
+        Value* Load::compile() {
 
             return Parser::Builder.CreateLoad(acc_->compile());
         }
 
         ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) noexcept
             : Op{ nullptr }, acc_{ std::static_pointer_cast<Array>(e) } {}
-        Value* ArrayLoad::compile() const {
+        Value* ArrayLoad::compile() {
 
             return acc_->compile();
         }
@@ -162,7 +166,7 @@ namespace llvmc {
 
         Store::Store(std::shared_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
             : Op{ nullptr }, acc_{ e }, val_{ std::move(s) } {}
-        Value* Store::compile() const {
+        Value* Store::compile() {
 
             Value* Acc = acc_->compile();
             Value* Val = val_->compile();
@@ -198,7 +202,7 @@ namespace llvmc {
 
         FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
             : Expr{ std::move(t) } {}
-        Value* FConstant::compile() const {
+        Value* FConstant::compile() {
 
             return ConstantFP::get(Parser::Context, 
                 APFloat(static_cast<double>(*dynamic_cast<Num const*>(op_.get()))));
@@ -243,7 +247,7 @@ namespace llvmc {
             carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
             align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
         }
-        Value* ArrayConstant::compile() const {
+        Value* ArrayConstant::compile() {
             
             std::string name_ = "array" + std::to_string(cnt_++);
 
@@ -267,14 +271,13 @@ namespace llvmc {
             return align_;
         }
 
-        Logical::Logical(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1,
-            std::unique_ptr<Expr> e2) noexcept : Expr{ std::move(t) },
-            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
+        Logical::Logical(std::unique_ptr<Token> t) noexcept 
+            : Expr{ std::move(t) } {}
 
         Bool::Bool(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1, 
-            std::unique_ptr<Expr> e2) noexcept : Logical{ std::move(t),
-            std::move(e1), std::move(e2) } {}
-        Value* Bool::compile() const {
+            std::unique_ptr<Expr> e2) noexcept : Logical{ std::move(t) },
+            lhs_{ std::move(e1) }, rhs_{ std::move(e2) } {}
+        Value* Bool::compile() {
 
             if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
 
@@ -319,13 +322,13 @@ namespace llvmc {
             return LogErrorV("invalid operand type");
         }
 
-        Not::Not(std::unique_ptr<Token> t, std::unique_ptr<Expr> e1) noexcept 
-            : Logical{ std::move(t), std::move(e1), nullptr } {}
-        Value* Not::compile() const {
+        Not::Not(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept 
+            : Logical{ std::move(t) }, exp_{ std::move(e) } {}
+        Value* Not::compile() {
 
-            if(!IArray::is_array(lhs_.get())) {    
+            if(!IArray::is_array(exp_.get())) {    
 
-                Value* E = lhs_->compile();
+                Value* E = exp_->compile();
 
                 E = Parser::Builder.CreateNot(E, "subnot");
 
@@ -356,7 +359,7 @@ namespace llvmc {
         Stmt* Stmt::enclosing = nullptr;
 
         ExprStmt::ExprStmt(std::unique_ptr<Expr> e) : expr_{ std::move(e) } {}
-        Value* ExprStmt::compile() const {
+        Value* ExprStmt::compile() {
 
             if(expr_) 
                 return expr_->compile();
@@ -367,7 +370,7 @@ namespace llvmc {
         FunStmt::FunStmt(std::unique_ptr<lexer::Token> t, ArgList lst) 
             : name_{ static_cast<Word*>(t.get())->lexeme_ },
             args_{ std::move(lst) } {}
-        Value* FunStmt::compile() const {
+        Value* FunStmt::compile() {
             
             //function arguments
             SmallVector<Type*, 8> doubles(args_.size(),
@@ -406,7 +409,7 @@ namespace llvmc {
 
             Parser::Builder.CreateBr(List.back());
         }
-        llvm::Value* IfElseBase::compile() const { 
+        llvm::Value* IfElseBase::compile() { 
 
             emit_if();
             emit_else();
@@ -455,7 +458,7 @@ namespace llvmc {
 
             stmt_->compile();
         }
-        Value* LoopBase::compile() const {
+        Value* LoopBase::compile() {
 
             Parser::Builder.CreateBr(List[0]);
             Parser::Builder.SetInsertPoint(List[0]);
@@ -469,7 +472,7 @@ namespace llvmc {
             LoopBase::init(std::move(e), std::move(s));
         }
         void While::emit_head(Value*) const {}
-        Value* While::compile() const {
+        Value* While::compile() {
 
             LoopBase::compile();
 
@@ -490,7 +493,7 @@ namespace llvmc {
             LoopBase::init(std::move(e), std::move(s));
         }
         void RepeatUntil::emit_head(Value*) const {}
-        Value* RepeatUntil::compile() const {
+        Value* RepeatUntil::compile() {
 
             LoopBase::compile();
 
@@ -536,7 +539,7 @@ namespace llvmc {
             
             Parser::Builder.CreateStore(Step, V);
         }
-        Value* For::compile() const {
+        Value* For::compile() {
 
             //init of loop counter
             Value* V = emit_preloop();
@@ -560,7 +563,7 @@ namespace llvmc {
 
             stmt_ = Stmt::enclosing;
         }
-        Value* Break::compile() const {
+        Value* Break::compile() {
 
             Parser::Builder.CreateBr(stmt_->List.back());
 
@@ -569,7 +572,7 @@ namespace llvmc {
 
         Return::Return(std::unique_ptr<Expr> e) 
             : expr_{ std::move(e) } {}
-        Value* Return::compile() const {
+        Value* Return::compile() {
             
             Parser::Builder.CreateRet(expr_->compile());
 
