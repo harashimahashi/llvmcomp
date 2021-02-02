@@ -12,8 +12,8 @@ namespace llvmc {
         std::shared_ptr<inter::Id> Env::get(std::string t) {
 
             for(Env* e = this; e != nullptr; e = e->prev_.get()) {
-                auto found = table_.find(t);
-                if(found != table_.end()) return found->second; 
+                auto found = e->table_.find(t);
+                if(found != e->table_.end()) return found->second; 
             }
             return nullptr;
         }
