@@ -200,6 +200,32 @@ namespace llvmc {
             return Acc;
         }
 
+        Call::Call(std::unique_ptr<Token> t, ArrList lst) 
+            : Op{ std::move(t) }, name_{ static_cast<Word const*>(op_.get())->lexeme_ },
+            args_{ std::move(lst) } {}
+        Value* Call::compile() {
+
+            auto Calee = Parser::Module->getFunction(name_);
+            if(!Calee) 
+                return LogErrorV("unknown function referenced");
+            
+            size_t par_sz = Calee->arg_size();
+            size_t arg_sz = args_.size();
+            if(par_sz != arg_sz)
+                return LogErrorV("wrong arguments number: expected "
+                + std::to_string(par_sz) + ", but " 
+                + std::to_string(arg_sz) + " provided");
+
+            ValList ArgsV;
+            std::transform(args_.begin(), args_.end(),
+                std::back_inserter(ArgsV), [](auto const& el) {
+
+                return el->compile();
+            });
+
+            return Parser::Builder.CreateCall(Calee, ArgsV);
+        }
+
         FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
             : Expr{ std::move(t) } {}
         Value* FConstant::compile() {

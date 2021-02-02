@@ -152,6 +152,17 @@ namespace llvmc {
             llvm::Value* compile() override;
         };
 
+        class Call : public Op {
+
+            std::string name_;
+            ArrList args_;
+
+        public:
+
+            Call(std::unique_ptr<lexer::Token>, ArrList);
+            llvm::Value* compile() override;
+        };
+
         class FConstant : public Expr {
 
         public:
