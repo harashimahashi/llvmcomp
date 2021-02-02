@@ -18,8 +18,9 @@ namespace llvmc {
 
             static inline llvm::LLVMContext Context;
             static inline llvm::IRBuilder Builder{ Context };
-            static inline std::unique_ptr<llvm::Module> Module;
-            static inline std::unordered_map<std::string, llvm::Value*> toplevel_tab;
+            static inline std::unique_ptr<llvm::Module> Module{ 
+                std::make_unique<llvm::Module>("module", Context) };
+            static inline llvm::DataLayout layout{ Module.get() };
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
         };

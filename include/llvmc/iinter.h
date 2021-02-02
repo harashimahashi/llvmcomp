@@ -11,18 +11,14 @@ namespace llvmc {
         using BBList = llvm::SmallVector<llvm::BasicBlock*, 4>;
         using IndexList = llvm::SmallVector<uint64_t, 8>;
         using ValList = llvm::SmallVector<llvm::Value*, 8>; 
-
+        using ArgList = std::vector<std::unique_ptr<lexer::Token>>;
 
         class Node {
-
-        protected:
-
-        static llvm::DataLayout layout;
 
         public:
 
             virtual ~Node();
-            virtual llvm::Value* compile() const = 0;
+            virtual llvm::Value* compile() = 0;
         };
 
         class Expr : public Node {
@@ -34,7 +30,7 @@ namespace llvmc {
             const std::unique_ptr<const lexer::Token> op_;
         };
 
-        using ArrList = llvm::SmallVector<std::unique_ptr<Expr>, 16>;
+        using ArrList = std::vector<std::unique_ptr<Expr>>;
         
         class Id : public Expr {
 
@@ -46,9 +42,10 @@ namespace llvmc {
 
         public:
 
-            static std::unique_ptr<Id> 
+            static std::shared_ptr<Id> 
                 get_id(std::unique_ptr<lexer::Token>);
-            llvm::Value* compile() const override;
+            llvm::Value* get_val() const;
+            llvm::Value* compile() override;
         };
 
         class IArray {
@@ -58,6 +55,7 @@ namespace llvmc {
             virtual llvm::Type* get_type() const = 0;
             virtual llvm::Align get_align() const = 0;
 
+            static inline bool is_array(Expr const*);
             static inline const uint64_t kByteSize = 8;
         };
 
@@ -72,9 +70,9 @@ namespace llvmc {
 
         public:
 
-            static std::unique_ptr<Array> 
+            static std::shared_ptr<Array> 
                 get_array(std::unique_ptr<lexer::Token>, IndexList);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
             llvm::Type* get_type() const override;
             llvm::Align get_align() const override;
 
@@ -96,7 +94,7 @@ namespace llvmc {
 
             Arith(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Unary : public Op {
@@ -107,7 +105,7 @@ namespace llvmc {
 
             Unary(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Access : public Op {
@@ -118,17 +116,29 @@ namespace llvmc {
         public:
 
             Access(Id*, ValList);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Load : public Op {
 
-            std::shared_ptr<Expr> acc_;
+            std::shared_ptr<Id> acc_;
 
         public:
 
-            Load(std::shared_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            Load(std::shared_ptr<Id>) noexcept;
+            llvm::Value* compile() override;
+        };
+
+        class ArrayLoad : public Op, public IArray {
+
+            std::shared_ptr<Array> acc_;
+
+        public:
+
+            ArrayLoad(std::shared_ptr<Id>) noexcept;
+            llvm::Value* compile() override;
+            llvm::Type* get_type() const override;
+            llvm::Align get_align() const override;
         };
 
         class Store : public Op {
@@ -139,7 +149,18 @@ namespace llvmc {
         public:
 
             Store(std::shared_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
+        };
+
+        class Call : public Op {
+
+            std::string name_;
+            ArrList args_;
+
+        public:
+
+            Call(std::unique_ptr<lexer::Token>, ArrList);
+            llvm::Value* compile() override;
         };
 
         class FConstant : public Expr {
@@ -147,7 +168,7 @@ namespace llvmc {
         public:
 
             FConstant(std::unique_ptr<lexer::Token>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class ArrayConstant : public Expr, public IArray {
@@ -159,7 +180,7 @@ namespace llvmc {
         public: 
 
             ArrayConstant(ArrList);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
             llvm::Type* get_type() const override;
             llvm::Align get_align() const override;
         };
@@ -168,28 +189,30 @@ namespace llvmc {
             
         public:
         
-            Logical(std::unique_ptr<lexer::Token>, 
-                std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-
-            const std::unique_ptr<const Expr> lhs_, rhs_;
+            Logical(std::unique_ptr<lexer::Token>) noexcept;
         };
 
         class Bool : public Logical {
+
+            std::unique_ptr<Expr> lhs_;
+            std::unique_ptr<Expr> rhs_;
 
         public:
 
             Bool(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Not : public Logical {
+
+            std::unique_ptr<Expr> exp_;
 
         public:
 
             Not(std::unique_ptr<lexer::Token>, 
                 std::unique_ptr<Expr>) noexcept;
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Stmt : public Node {
@@ -212,8 +235,19 @@ namespace llvmc {
         public:
 
             ExprStmt(std::unique_ptr<Expr> = nullptr);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
+
+        class FunStmt : public Stmt {
+
+            std::string name_;
+            ArgList args_;
+
+        public:
+
+            FunStmt(std::unique_ptr<lexer::Token>, ArgList);
+            llvm::Value* compile() override;
+        }; 
 
         class IfElseBase : public Stmt {
             
@@ -229,7 +263,7 @@ namespace llvmc {
 
             IfElseBase(std::unique_ptr<Expr>,
                 std::unique_ptr<Stmt>, unsigned);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class If : public IfElseBase {
@@ -276,9 +310,9 @@ namespace llvmc {
 
         public:
 
-            LoopBase(std::unique_ptr<Expr>, 
-                std::unique_ptr<Stmt>, unsigned);
-            llvm::Value* compile() const override;
+            LoopBase(unsigned);
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
         };
 
         class While : public LoopBase {
@@ -291,8 +325,9 @@ namespace llvmc {
 
         public:
 
-            While(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
-            llvm::Value* compile() const override;
+            While();
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
         };
 
         class RepeatUntil : public LoopBase {
@@ -305,8 +340,9 @@ namespace llvmc {
 
         public:
 
-            RepeatUntil(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
-            llvm::Value* compile() const override;
+            RepeatUntil();
+            void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
         };
 
         class For : public LoopBase {
@@ -322,9 +358,10 @@ namespace llvmc {
 
         public:
 
-            For(std::unique_ptr<Expr>, 
+            For();
+            void init(std::unique_ptr<Expr>,
                 std::unique_ptr<Stmt>, std::unique_ptr<Stmt>);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
 
             void set_to();
             void set_downto();
@@ -337,7 +374,7 @@ namespace llvmc {
         public:
 
             Break();
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
 
         class Return : public Stmt {
@@ -347,7 +384,7 @@ namespace llvmc {
         public:
 
             Return(std::unique_ptr<Expr>);
-            llvm::Value* compile() const override;
+            llvm::Value* compile() override;
         };
     }
 }
