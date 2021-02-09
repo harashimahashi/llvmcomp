@@ -27,15 +27,25 @@ namespace llvmc {
         Token::Token(int t) noexcept : tag_{ t } {}
         Token::~Token() = default;
         Token::operator int() const noexcept {
+            
             return tag_cast(tag_);
+        }
+        Token::operator Tag() const noexcept {
+            
+            return tag_;
         }
 
         Num::Num(double v) noexcept : Token{ tag_cast(Tag::NUM) }, val_{ v } {}
         Num::operator double() const noexcept {
+            
             return val_;
         }
         
         Word::Word(std::string s, int tag) : Token{ tag }, lexeme_{ s } {}
+        bool Word::operator==(Word const& w) const noexcept {
+
+            return lexeme_ == w.lexeme_;
+        }
 
         const Word 
             Word::And{ "&&", tag_cast(Tag::AND) },

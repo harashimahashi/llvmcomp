@@ -102,7 +102,7 @@ namespace llvmc {
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
-                switch(*op_) {
+                switch(int(*op_)) {
                     
                     case '+':
                         return Parser::Builder.CreateFAdd(L, R, "addtmp");
@@ -330,7 +330,7 @@ namespace llvmc {
                 }
                 else {
 
-                    switch(*op_) {
+                    switch(int(*op_)) {
 
                         case '<':
                             L = Parser::Builder.CreateFCmpULT(L, R, "subcmp");

@@ -11,10 +11,17 @@ namespace llvmc {
 
         class Parser {
 
-        lexer::Lexer lex;
-        std::unique_ptr<lexer::Token> tok;
+        lexer::Lexer lex_;
+        std::unique_ptr<lexer::Token> tok_;
+        class EnvGuard;
 
+        auto LogErrorV(std::string);
+        void move();
+        auto match(lexer::Tag);
         void program_preinit();
+        void fun_stmts();
+        void fun_def();
+        void fun_call();
         
         public:
 
@@ -25,7 +32,7 @@ namespace llvmc {
             static inline llvm::DataLayout layout{ Module.get() };
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
-            Parser(lexer::Lexer l) : lex{ std::move(l) } {}
+            Parser(lexer::Lexer);
 
             void program();
         };

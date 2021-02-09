@@ -5,6 +5,52 @@ namespace llvmc {
     namespace parser {
 
         using namespace llvm;
+        using namespace lexer;
+        using namespace inter;
+
+        class Parser::EnvGuard {
+
+            std::shared_ptr<symbols::Env> pPrev;
+
+        public:
+
+            EnvGuard() : pPrev{ top } {
+
+                top = std::make_shared<symbols::Env>(top);
+            }
+            
+            ~EnvGuard() {
+
+                top = pPrev;
+            }
+        };
+
+        Parser::Parser(Lexer lex) : lex_{ std::move(lex) } {
+
+            move();
+        }
+
+        auto Parser::LogErrorV(std::string s) {
+
+            errs() << lex_.line_ << ": " << s << '\n';
+            return std::unique_ptr<Token>{ nullptr };
+        }
+
+        void Parser::move() {
+
+            tok_ = lex_.scan();
+        }
+
+        auto Parser::match(Tag t) {
+
+            if(*tok_ == t) {
+                
+                auto ret = std::move(tok_);
+                move();
+                return ret;
+            }
+            else return LogErrorV("syntax error");
+        }
 
         void Parser::program_preinit() {
 
@@ -60,7 +106,45 @@ namespace llvmc {
         void Parser::program() {
             
             program_preinit();
-
+            fun_stmts();
         }
+
+        void Parser::fun_stmts() {
+
+            while(tok_) {
+
+                switch(Tag(*tok_)) {
+
+                    case Tag::FUN:
+                        fun_def();
+                        break;
+                    case Tag::ID:
+                        fun_call();
+                        break;
+                }
+            }
+        }
+
+        void Parser::fun_def() {
+
+            match(Tag::FUN);
+            auto name = match(Tag::ID);
+            match(Tag{'('});
+
+            ArgList lst;
+            while(*tok_ != ')') {
+
+                lst.emplace_back(match(Tag::ID));
+                if(*tok_ == ',') match(Tag{','});
+            }
+            match(Tag{')'});
+
+            EnvGuard g{};
+            
+            FunStmt fun{ std::move(name), std::move(lst) };
+            fun.compile();
+        }
+
+        void Parser::fun_call() {}
     }
 }
