@@ -224,8 +224,19 @@ namespace llvmc {
             Stmt(unsigned = 0);
 
             const BBList List;
-            static const Stmt& empty;
             static Stmt* enclosing;
+        };
+
+        class StmtSeq : public Stmt {
+
+            std::unique_ptr<Stmt> stmt1_;
+            std::unique_ptr<Stmt> stmt2_;
+
+        public:
+
+            StmtSeq(std::unique_ptr<Stmt>,
+                std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
         };
 
         class ExprStmt : public Stmt {
@@ -240,12 +251,12 @@ namespace llvmc {
 
         class FunStmt : public Stmt {
 
-            std::string name_;
-            ArgList args_;
+            std::unique_ptr<Stmt> stmt_;
 
         public:
 
             FunStmt(std::unique_ptr<lexer::Token>, ArgList);
+            void init(std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         }; 
 

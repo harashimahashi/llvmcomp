@@ -381,8 +381,17 @@ namespace llvmc {
             return temp;
         }
         Stmt::Stmt(unsigned cnt) : List{ compute_bb(cnt) } {}
-        const Stmt& Stmt::empty = ExprStmt{};
         Stmt* Stmt::enclosing = nullptr;
+
+        StmtSeq::StmtSeq(std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) :
+            stmt1_{ std::move(s1) }, stmt2_{ std::move(s2) } {}
+        Value* StmtSeq::compile() {
+
+            if(stmt1_) stmt1_->compile();
+            if(stmt2_) stmt2_->compile();
+
+            return nullptr;
+        }
 
         ExprStmt::ExprStmt(std::unique_ptr<Expr> e) : expr_{ std::move(e) } {}
         Value* ExprStmt::compile() {
@@ -394,13 +403,12 @@ namespace llvmc {
         }
 
         FunStmt::FunStmt(std::unique_ptr<lexer::Token> t, ArgList lst) 
-            : name_{ static_cast<Word*>(t.get())->lexeme_ },
-            args_{ std::move(lst) } {}
-        Value* FunStmt::compile() {
+            : stmt_{ nullptr } {
             
             //function arguments
-            SmallVector<Type*, 8> doubles(args_.size(),
+            SmallVector<Type*, 8> doubles(lst.size(),
                 Parser::Builder.getDoubleTy());
+            std::string name_ = static_cast<Word*>(t.get())->lexeme_;
 
             //create function
             auto FType = FunctionType::get(
@@ -411,11 +419,19 @@ namespace llvmc {
             Parser::Builder.SetInsertPoint(BB);
             
             //emitting function args as variables
-            for(size_t i = 0, sz = args_.size(); i < sz; i++) {
+            for(size_t i = 0, sz = lst.size(); i < sz; i++) {
 
-                auto IdPtr = Id::get_id(std::move(args_[i]));
+                auto IdPtr = Id::get_id(std::move(lst[i]));
                 Parser::Builder.CreateStore(Func->getArg(i), IdPtr->compile());
             }
+        }
+        void FunStmt::init(std::unique_ptr<Stmt> s) {
+
+            stmt_ = std::move(s);
+        }
+        Value* FunStmt::compile() {
+            
+            if(stmt_) stmt_->compile();
 
             return nullptr;
         }
