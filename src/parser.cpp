@@ -30,10 +30,11 @@ namespace llvmc {
             move();
         }
 
-        auto Parser::LogErrorV(std::string s) {
-
-            errs() << lex_.line_ << ": " << s << '\n';
-            return std::unique_ptr<Token>{ nullptr };
+        std::nullptr_t Parser::LogErrorV(std::string s) {
+            
+            ++err_num;
+            errs() << "error:" << Lexer::line_ << ": " << s << '\n';
+            return nullptr;
         }
 
         void Parser::move() {
@@ -41,7 +42,7 @@ namespace llvmc {
             tok_ = lex_.scan();
         }
 
-        auto Parser::match(Tag t) {
+        std::unique_ptr<Token> Parser::match(Tag t) {
 
             if(*tok_ == t) {
                 
@@ -49,7 +50,7 @@ namespace llvmc {
                 move();
                 return ret;
             }
-            else return LogErrorV("syntax error");
+            return LogErrorV("syntax error");
         }
 
         void Parser::program_preinit() {
@@ -111,40 +112,242 @@ namespace llvmc {
 
         void Parser::fun_stmts() {
 
+            std::vector<std::unique_ptr<Stmt>> program;
+
             while(tok_) {
 
-                switch(Tag(*tok_)) {
+                switch(*tok_) {
 
                     case Tag::FUN:
-                        fun_def();
-                        break;
+                        {
+                            auto fun = fun_def();
+                            program.emplace_back(std::move(fun));
+                            break;
+                        }
                     case Tag::ID:
-                        fun_call();
-                        break;
+                        {
+                            auto call = fun_call();
+                            program.emplace_back(std::move(call));
+                            break;
+                        }
                 }
             }
+
+            if(err_num) {
+                
+                std::string err = err_num > 1 ? "errors" : "error";
+
+                errs() << std::to_string(err_num) + ' ' + err + " generated\n";
+                return;
+            }
+
+            std::for_each(program.begin(), program.end(), [](auto&& stmt) {
+
+                stmt->compile();
+            });
         }
 
-        void Parser::fun_def() {
+        std::unique_ptr<Stmt> Parser::fun_def() {
 
             match(Tag::FUN);
             auto name = match(Tag::ID);
             match(Tag{'('});
 
             ArgList lst;
-            while(*tok_ != ')') {
+            while(*tok_ != Tag{')'}) {
 
                 lst.emplace_back(match(Tag::ID));
-                if(*tok_ == ',') match(Tag{','});
+                if(*tok_ == Tag{','}) match(Tag{','});
             }
-            match(Tag{')'});
+            move();
 
             EnvGuard g{};
             
-            FunStmt fun{ std::move(name), std::move(lst) };
-            fun.compile();
+            auto fun = std::make_unique<FunStmt>(std::move(name), std::move(lst));
+
+            match(Tag::IDENT);
+            fun->init(stmts());
+            match(Tag::DEIDENT);
+
+            return fun;
         }
 
-        void Parser::fun_call() {}
+        std::unique_ptr<Stmt> Parser::fun_call() {
+
+            auto name = match(Tag::ID);
+            return std::unique_ptr<Stmt>{ nullptr };
+        }
+
+        std::unique_ptr<Stmt> Parser::stmts() {
+
+            if(*tok_ == Tag::DEIDENT) return nullptr;
+
+            return std::make_unique<StmtSeq>(stmt(), stmts());
+        }
+
+        std::unique_ptr<Stmt> Parser::stmt() {
+
+            std::unique_ptr<Expr> exp;
+            std::unique_ptr<Stmt> stmt1;
+            std::unique_ptr<Stmt> stmt2;
+            Stmt* saved;
+
+            switch(*tok_) {
+
+                case Tag{';'}:
+                    move();
+                    return nullptr;
+                    break;
+                case Tag::LET:
+                    return decls();
+                    break;
+            }
+
+            return std::unique_ptr<Stmt>{ nullptr };
+        }
+
+        std::unique_ptr<Stmt> Parser::decls() {
+            
+            match(Tag::LET);
+            auto name = match(Tag::ID);
+            auto id = Id::get_id(std::move(name));
+
+            if(*tok_ != Tag{'='}) return nullptr;
+            
+            move();
+            auto store = std::make_unique<Store>(id, pbool());
+            return std::make_unique<ExprStmt>(std::move(store));
+        }
+
+        std::unique_ptr<Expr> Parser::pbool() {
+
+            auto exp = join();
+
+            while(*tok_ == Tag::OR) {
+
+                auto op = match(Tag::OR);
+                exp = std::make_unique<Bool>(
+                    std::move(op), std::move(exp), join());
+            }
+
+            return exp;
+        }
+
+        std::unique_ptr<Expr> Parser::join() {
+
+            auto exp = equality();
+
+            while(*tok_ == Tag::AND) {
+
+                auto op = match(Tag::AND);
+                exp = std::make_unique<Bool>(
+                    std::move(op), std::move(exp), equality());
+            }
+
+            return exp;
+        }
+
+        std::unique_ptr<Expr> Parser::equality() {
+
+            auto exp = rel();
+
+            while((*tok_ == Tag::EQ) || (*tok_ == Tag::NE)) {
+
+                auto op = std::move(tok_); move();
+                exp = std::make_unique<Bool>(
+                    std::move(op), std::move(exp), rel());
+            }
+
+            return exp;
+        }
+
+        std::unique_ptr<Expr> Parser::rel() {
+
+            auto exp = expr();
+
+            switch(*tok_) {
+
+                [[fallthrough]];
+                case Tag{'<'}:
+                case Tag::LE:
+                case Tag::GE:
+                case Tag{'>'}:
+                    {
+                        auto op = std::move(tok_); move();
+                        return std::make_unique<Bool>(
+                            std::move(op), std::move(exp), expr());
+                    }
+                default:
+                    return exp;
+            }
+        }
+
+        std::unique_ptr<Expr> Parser::expr() {
+
+            auto exp = term();
+
+            while((*tok_ == Tag{'+'}) || (*tok_ == Tag{'-'})) {
+
+                auto op = std::move(tok_); move();
+                exp = std::make_unique<Arith>(
+                    std::move(op), std::move(exp), term());
+            }
+
+            return exp;
+        }
+
+        std::unique_ptr<Expr> Parser::term() {
+
+            auto exp = unary();
+
+            while((*tok_ == Tag{'*'}) || (*tok_ == Tag{'/'})) {
+
+                auto op = std::move(tok_); move();
+                exp = std::make_unique<Arith>(
+                    std::move(op), std::move(exp), unary());
+            }
+
+            return exp;
+        }
+
+        std::unique_ptr<Expr> Parser::unary() {
+
+            if((*tok_ == Tag{'-'}) || (*tok_ == Tag{'!'})) {
+
+                auto op = std::move(tok_); move();
+                return std::make_unique<Not>(
+                    std::move(op), unary());
+            }
+
+            return factor();
+        }
+
+        std::unique_ptr<Expr> Parser::factor() {
+
+            std::unique_ptr<Expr> exp{};
+
+            switch(*tok_) {
+
+                case Tag{'('}:
+                    move();
+                    exp = pbool();
+                    match(Tag{')'});
+                    return exp;
+                case Tag::NUM:
+                    exp = std::make_unique<FConstant>(
+                        std::move(tok_)); move();
+                    return exp;
+                case Tag::TRUE:
+                    exp = std::make_unique<FConstant>(
+                        std::make_unique<Num>(1.0));
+                    move();
+                    return exp;
+                case Tag::FALSE:
+                    exp = std::make_unique<FConstant>(
+                        std::make_unique<Num>(0.0));
+                    move();
+                    return exp;
+            }
+        }
     }
 }

@@ -380,7 +380,7 @@ namespace llvmc {
 
         class Break : public Stmt {
 
-            Stmt* stmt_;
+            llvm::BasicBlock* bb;
 
         public:
 

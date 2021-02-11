@@ -26,10 +26,6 @@ namespace llvmc {
 
         Token::Token(int t) noexcept : tag_{ t } {}
         Token::~Token() = default;
-        Token::operator int() const noexcept {
-            
-            return tag_cast(tag_);
-        }
         Token::operator Tag() const noexcept {
             
             return tag_;
@@ -54,7 +50,6 @@ namespace llvmc {
             Word::ne{ "!=", tag_cast(Tag::NE) }, 
             Word::le{ "<=", tag_cast(Tag::LE) }, 
             Word::ge{ ">=", tag_cast(Tag::GE) }, 
-            Word::minus{ "minus", tag_cast(Tag::MINUS) }, 
             Word::True{ "true", tag_cast(Tag::TRUE) }, 
             Word::False{ "false", tag_cast(Tag::FALSE) };
 

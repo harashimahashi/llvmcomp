@@ -1,17 +1,6 @@
 #include <llvmc/iinter.h>
 #include <llvmc/iparser.h>
 
-namespace {
-
-    llvm::Value* LogErrorV(std::string s) {
-        
-        llvm::errs() << "Compile error:" << 
-            llvmc::lexer::Lexer::line_ << ": " << s << '\n';
-
-        return nullptr;
-    }
-}
-
 namespace llvmc {
 
     namespace inter {
@@ -32,6 +21,9 @@ namespace llvmc {
                         Parser::Builder.getDoubleTy(), nullptr);
             std::string name = static_cast<Word*>(t.get())->lexeme_;
 
+            if(Parser::top->get(name)) 
+                return Parser::LogErrorV("redefinition of \'" + name + '\'');
+            
             auto sp = std::shared_ptr<Id>{ new Id{ std::move(t), V } };
             Parser::top->insert(name,  sp);
 
@@ -102,20 +94,20 @@ namespace llvmc {
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
-                switch(int(*op_)) {
+                switch(*op_) {
                     
-                    case '+':
+                    case Tag{'+'}:
                         return Parser::Builder.CreateFAdd(L, R, "addtmp");
-                    case '-':
+                    case Tag{'-'}:
                         return Parser::Builder.CreateFSub(L, R, "subtmp");
-                    case '*':
+                    case Tag{'*'}:
                         return Parser::Builder.CreateFMul(L, R, "multmp");
-                    case '/':
+                    case Tag{'/'}:
                         return Parser::Builder.CreateFDiv(L, R, "muldiv");
                 }
             }
             
-            return LogErrorV("invalid operand type");
+            return Parser::LogErrorV("invalid operand type");
         }
 
         Unary::Unary(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept
@@ -129,7 +121,7 @@ namespace llvmc {
                 return Parser::Builder.CreateFNeg(E, "subneg");
             }
 
-            return LogErrorV("invalid operand type");
+            return Parser::LogErrorV("invalid operand type");
         }
 
         Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
@@ -139,7 +131,7 @@ namespace llvmc {
             if(arr_)
                 return Parser::Builder.CreateGEP(arr_, args_);
 
-            return LogErrorV("trying to access non-array id");
+            return Parser::LogErrorV("trying to access non-array id");
         }
 
         Load::Load(std::shared_ptr<Id> e) noexcept 
@@ -190,11 +182,11 @@ namespace llvmc {
                             Parser::layout.getTypeSizeInBits(T) / IArray::kByteSize);
                     }
                     else    
-                        return LogErrorV("incompatible array types");
+                        return Parser::LogErrorV("incompatible array types");
 
                 }
                 else
-                    return LogErrorV("incompatible types");
+                    return Parser::LogErrorV("incompatible types");
             }
 
             return Acc;
@@ -207,12 +199,12 @@ namespace llvmc {
 
             auto Calee = Parser::Module->getFunction(name_);
             if(!Calee) 
-                return LogErrorV("unknown function referenced");
+                return Parser::LogErrorV("unknown function referenced");
             
             size_t par_sz = Calee->arg_size();
             size_t arg_sz = args_.size();
             if(par_sz != arg_sz)
-                return LogErrorV("wrong arguments number: expected "
+                return Parser::LogErrorV("wrong arguments number: expected "
                 + std::to_string(par_sz) + ", but " 
                 + std::to_string(arg_sz) + " provided");
 
@@ -268,7 +260,7 @@ namespace llvmc {
             }
 
             if(c_err)
-                LogErrorV("constant array has non-constant initializer");
+                Parser::LogErrorV("constant array has non-constant initializer");
 
             carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
             align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
@@ -330,12 +322,12 @@ namespace llvmc {
                 }
                 else {
 
-                    switch(int(*op_)) {
+                    switch(*op_) {
 
-                        case '<':
+                        case Tag{'<'}:
                             L = Parser::Builder.CreateFCmpULT(L, R, "subcmp");
                             break;
-                        case '>':
+                        case Tag{'>'}:
                             L = Parser::Builder.CreateFCmpUGT(L, R, "subcmp");
                             break;
                     }
@@ -345,7 +337,7 @@ namespace llvmc {
                 }
             }
 
-            return LogErrorV("invalid operand type");
+            return Parser::LogErrorV("invalid operand type");
         }
 
         Not::Not(std::unique_ptr<Token> t, std::unique_ptr<Expr> e) noexcept 
@@ -356,13 +348,24 @@ namespace llvmc {
 
                 Value* E = exp_->compile();
 
-                E = Parser::Builder.CreateNot(E, "subnot");
+                switch(*op_) {
+                    
+                    case Tag{'!'}:
+                        E = Parser::Builder.CreateXor(
+                            Parser::Builder.CreateFCmpUNE(E,
+                            ConstantFP::get(Parser::Context, APFloat(0.0))),
+                            Parser::Builder.getTrue());
+                        break;
+                    case Tag{'-'}:
+                        E = Parser::Builder.CreateNot(E, "subnot");
+                        break;
+                }
 
                 return Parser::Builder.CreateUIToFP(E,
                         Parser::Builder.getDoubleTy(), "booltmp");
             }
 
-            return LogErrorV("invalid operand type");
+            return Parser::LogErrorV("invalid operand type");
         }
 
         BBList Stmt::compute_bb(unsigned cnt) {
@@ -601,13 +604,10 @@ namespace llvmc {
             return nullptr;
         }
 
-        Break::Break() {
-
-            stmt_ = Stmt::enclosing;
-        }
+        Break::Break() : bb{ Stmt::enclosing->List.back() } {}
         Value* Break::compile() {
 
-            Parser::Builder.CreateBr(stmt_->List.back());
+            Parser::Builder.CreateBr(bb);
 
             return nullptr;
         }
