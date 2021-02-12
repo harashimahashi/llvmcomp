@@ -126,8 +126,9 @@ namespace llvmc {
                         }
                     case Tag::ID:
                         {
-                            auto call = fun_call();
-                            program.emplace_back(std::move(call));
+                            auto call = std::make_unique<ExprStmt>(fun_call());
+                            program.emplace_back(
+                                std::make_unique<MainStmt>(std::move(call)));
                             break;
                         }
                 }
@@ -172,10 +173,15 @@ namespace llvmc {
             return fun;
         }
 
-        std::unique_ptr<Stmt> Parser::fun_call() {
+        std::unique_ptr<Expr> Parser::fun_call() {
 
             auto name = match(Tag::ID);
-            return std::unique_ptr<Stmt>{ nullptr };
+            match(Tag{'('});
+
+            auto ret = std::make_unique<Call>(std::move(name), expr_seq());
+            match(Tag{')'});
+
+            return ret;
         }
 
         std::unique_ptr<Stmt> Parser::stmts() {
@@ -201,6 +207,100 @@ namespace llvmc {
                 case Tag::LET:
                     return decls();
                     break;
+                case Tag::ID:
+                    return assign();
+                    break;
+                case Tag::IF:
+                    {
+                        match(Tag::IF); 
+                        exp = pbool();
+
+                        match(Tag::IDENT);
+                        stmt1 = stmts();
+                        match(Tag::DEIDENT);
+
+                        if(*tok_ != Tag::ELSE)
+                            return std::make_unique<If>(
+                                std::move(exp), std::move(stmt1));
+
+                        match(Tag::ELSE);
+                        match(Tag::IDENT);
+                        stmt2 = stmts();
+                        match(Tag::DEIDENT);
+
+                        return std::make_unique<IfElse>(
+                            std::move(exp), std::move(stmt1), std::move(stmt2));
+                    }
+                case Tag::WHILE:
+                    {
+                        auto while_ = std::make_unique<While>();
+                        saved = Stmt::enclosing;
+                        Stmt::enclosing = while_.get();
+                        
+                        match(Tag::WHILE);
+                        exp = pbool();
+
+                        match(Tag::IDENT);
+                        stmt1 = stmts();
+                        match(Tag::DEIDENT);
+                        while_->init(std::move(exp), std::move(stmt1));
+                        Stmt::enclosing = saved;
+                        return while_;
+
+                    }
+                case Tag::REPEAT:
+                    {
+                        auto repeat_ = std::make_unique<RepeatUntil>();
+                        saved = Stmt::enclosing;
+                        Stmt::enclosing = repeat_.get();
+
+                        match(Tag::REPEAT);
+                        match(Tag::IDENT);
+                        stmt1 = stmts();
+                        match(Tag::DEIDENT);
+
+                        match(Tag::UNTIL);
+                        exp = pbool();
+                        repeat_->init(std::move(exp), std::move(stmt1));
+                        Stmt::enclosing = saved;
+
+                        return repeat_;
+                    }
+                case Tag::FOR:
+                    {
+                        auto for_ = std::make_unique<For>();
+                        saved = Stmt::enclosing;
+                        Stmt::enclosing = for_.get();
+
+                        match(Tag::FOR);
+                        stmt1 = decls();
+                        if(*tok_ == Tag::TO) {
+                            for_->set_to();
+                            match(Tag::TO);
+                        }
+                        if(*tok_ == Tag::DOWNTO) {
+                            for_->set_downto();
+                            match(Tag::DOWNTO);
+                        }
+
+                        exp = pbool();
+                        match(Tag::IDENT);
+                        stmt2 = stmts();
+                        match(Tag::DEIDENT);
+
+                        for_->init(std::move(exp), std::move(stmt2),
+                            std::move(stmt1));
+                        return for_;
+                    }
+                case Tag::BREAK:
+                    match(Tag::BREAK);
+                    return std::make_unique<Break>();
+                case Tag::RETURN:
+                    match(Tag::RETURN);
+                    exp = pbool();
+                    return std::make_unique<Return>(std::move(exp));
+                default:
+                    return std::make_unique<ExprStmt>(pbool());
             }
 
             return std::unique_ptr<Stmt>{ nullptr };
@@ -251,6 +351,39 @@ namespace llvmc {
             move();
             auto store = std::make_unique<Store>(id, pbool());
             return std::make_unique<ExprStmt>(std::move(store));
+        }
+
+        std::unique_ptr<inter::Stmt> Parser::assign() {
+
+            auto tokName = match(Tag::ID);
+            auto name = static_cast<Word const*>(
+                tokName.get())->lexeme_;
+            auto id = top->get(name);
+            std::shared_ptr<Expr> exp{};
+            
+            if(*tok_ == Tag{'['}) {
+
+                exp = std::shared_ptr<Expr>{ access(id.get()).release() };
+            }
+            else if(id) {
+
+                exp = id;
+            }
+            else if(*tok_ == Tag{'('}) {
+                
+                move();
+                auto ret = std::make_unique<Call>(std::move(tokName), expr_seq());
+                match(Tag{')'});
+
+                return std::make_unique<ExprStmt>(std::move(ret));
+            }
+
+            if(!(*tok_ == Tag{'='})) return nullptr;
+
+            move();
+            auto stmt = std::make_unique<Store>(exp, pbool());
+
+            return std::make_unique<ExprStmt>(std::move(stmt));
         }
 
         std::unique_ptr<Expr> Parser::pbool() {
@@ -382,16 +515,17 @@ namespace llvmc {
                     move();
                     return exp;
                 case Tag::ID:
-                    {
+                    {   
+                        auto tokName = match(Tag::ID);
                         auto name = static_cast<Word const*>(
-                            match(Tag::ID).get())->lexeme_;
+                            tokName.get())->lexeme_;
                         auto id = top->get(name);
                         
                         if(auto pId = std::dynamic_pointer_cast<Array>(id); id && !pId) {
 
                             return std::make_unique<Load>(id);
                         }
-                        else if(id && (*tok_ != Tag{'['})){
+                        else if(id && (*tok_ != Tag{'['}) && (*tok_ != Tag{'('})){
 
                             return std::make_unique<ArrayLoad>(id);
                         }
@@ -407,6 +541,8 @@ namespace llvmc {
                     exp = std::make_unique<ArrayConstant>(expr_seq());
                     match(Tag{']'});
                     return exp;
+                default:
+                    return LogErrorV("syntax error");
             }
         }
 

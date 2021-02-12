@@ -22,10 +22,11 @@ namespace llvmc {
         void program_preinit();
         void fun_stmts();
         std::unique_ptr<inter::Stmt> fun_def();
-        std::unique_ptr<inter::Stmt> fun_call();
+        std::unique_ptr<inter::Expr> fun_call();
         std::unique_ptr<inter::Stmt> stmts();
         std::unique_ptr<inter::Stmt> stmt();
         std::unique_ptr<inter::Stmt> decls();
+        std::unique_ptr<inter::Stmt> assign();
         std::unique_ptr<inter::Expr> pbool();
         std::unique_ptr<inter::Expr> join();
         std::unique_ptr<inter::Expr> equality();

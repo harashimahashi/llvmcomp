@@ -90,8 +90,8 @@ namespace llvmc {
             reserve(Word{ "let", tag_cast(Tag::LET) });
             reserve(Word{ "return", tag_cast(Tag::RETURN) });
             reserve(Word::True); reserve(Word::False);
-            words_.emplace("print", Word{ "printf", tag_cast(Tag::ID) });
-            words_.emplace("read", Word{ "scanf", tag_cast(Tag::ID) });
+            words_.emplace("print", Word{ "print", tag_cast(Tag::ID) });
+            words_.emplace("read", Word{ "read", tag_cast(Tag::ID) });
 
             readch();
         }

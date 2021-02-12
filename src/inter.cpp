@@ -129,14 +129,16 @@ namespace llvmc {
         Value* Access::compile() {
             
             if(arr_) {
+
+                ValList args{ Parser::Builder.getInt32(0) };
                 
-                std::transform(args_.begin(), args_.end(), args_.begin(),
+                std::transform(args_.begin(), args_.end(), std::back_inserter(args),
                 [](auto el) {
 
                     return Parser::Builder.CreateFPToUI(el, Parser::Builder.getInt32Ty());
                 });
-                args_.emplace_back(Parser::Builder.getInt32(0));
-                return Parser::Builder.CreateGEP(arr_, args_);
+
+                return Parser::Builder.CreateGEP(arr_, args);
             }
 
             return Parser::LogErrorV("trying to access non-array id");
@@ -228,6 +230,7 @@ namespace llvmc {
 
                 return el->compile();
             });
+
 
             return Parser::Builder.CreateCall(Calee, ArgsV);
         }
@@ -453,6 +456,21 @@ namespace llvmc {
             return nullptr;
         }
 
+        MainStmt::MainStmt(std::unique_ptr<Stmt> s) : stmt_{ std::move(s) } {}
+        Value* MainStmt::compile() {
+
+            auto currBB = Parser::Builder.GetInsertBlock();
+            auto main = Parser::Module->getFunction("main");
+            auto& mainBB = main->getEntryBlock();
+
+            Parser::Builder.SetInsertPoint(&mainBB);
+            stmt_->compile();
+
+            Parser::Builder.SetInsertPoint(currBB);
+
+            return nullptr;
+        }
+
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s, unsigned cnt) 
             : Stmt{ cnt }, expr_{ std::move(e) }, stmt_{ std::move(s) } {}
@@ -630,7 +648,8 @@ namespace llvmc {
             : expr_{ std::move(e) } {}
         Value* Return::compile() {
             
-            Parser::Builder.CreateRet(expr_->compile());
+            if(expr_)
+                Parser::Builder.CreateRet(expr_->compile());
 
             return nullptr;
         }
