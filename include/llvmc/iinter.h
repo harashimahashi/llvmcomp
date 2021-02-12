@@ -121,11 +121,12 @@ namespace llvmc {
 
         class Load : public Op {
 
-            std::shared_ptr<Id> acc_;
+            std::shared_ptr<Expr> acc_;
 
         public:
 
             Load(std::shared_ptr<Id>) noexcept;
+            Load(std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -149,6 +150,7 @@ namespace llvmc {
         public:
 
             Store(std::shared_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            Store(std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 

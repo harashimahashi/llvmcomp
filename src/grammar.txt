@@ -22,7 +22,7 @@ stmt -> decls;
 	| RETURN bool;
 decls -> decl
 	| decl_init
-decl -> decl[bool]
+decl -> decl[NUM]
 	| LET ID
 decl_init -> decl = bool 
 assign -> access_expr = bool

@@ -210,7 +210,41 @@ namespace llvmc {
             
             match(Tag::LET);
             auto name = match(Tag::ID);
-            auto id = Id::get_id(std::move(name));
+            std::shared_ptr<Id> id;
+
+            if(*tok_ != Tag{'['})
+                id = Id::get_id(std::move(name));
+            else {
+
+                IndexList idxs;
+
+                while(*tok_ == Tag{'['}) {
+
+                    move();
+                    if(*tok_ == Tag{'-'}) {
+
+                        move();
+                        LogErrorV("array size must be positive number");
+                    }
+                    double val{0.0};
+                    if(auto num = match(Tag::NUM)) {
+                        val = *static_cast<Num const*>(num.get());
+                    }
+                    else
+                        while(*tok_ != Tag{']'}) move();
+                    double intp; 
+
+                    if(!(std::modf(val, &intp) == 0)) {
+
+                        LogErrorV("array size must not be double");
+                    }
+
+                    idxs.emplace_back(static_cast<uint64_t>(intp));
+                    match(Tag{']'});
+                }
+
+                id = Array::get_array(std::move(name), idxs);
+            }
 
             if(*tok_ != Tag{'='}) return nullptr;
             
@@ -347,7 +381,63 @@ namespace llvmc {
                         std::make_unique<Num>(0.0));
                     move();
                     return exp;
+                case Tag::ID:
+                    {
+                        auto name = static_cast<Word const*>(
+                            match(Tag::ID).get())->lexeme_;
+                        auto id = top->get(name);
+                        
+                        if(auto pId = std::dynamic_pointer_cast<Array>(id); id && !pId) {
+
+                            return std::make_unique<Load>(id);
+                        }
+                        else if(id && (*tok_ != Tag{'['})){
+
+                            return std::make_unique<ArrayLoad>(id);
+                        }
+                        else if(*tok_ == Tag{'['}) {
+
+                            return std::make_unique<Load>(access(id.get()));
+                        }
+
+                        return LogErrorV("using of undeclared \'" + name + '\'');
+                    }
+                case Tag{'['}:
+                    move();
+                    exp = std::make_unique<ArrayConstant>(expr_seq());
+                    match(Tag{']'});
+                    return exp;
             }
+        }
+
+        std::unique_ptr<Expr> Parser::access(Id* id) {
+
+            ValList idxs;
+
+            while(*tok_ == Tag{'['}) {
+                
+                move();
+                idxs.emplace_back(pbool()->compile());
+                match(Tag{']'});
+            }
+
+            return std::make_unique<Access>(id, idxs);
+        }
+
+        ArrList Parser::expr_seq() {
+
+            ArrList lst{};
+
+            if((*tok_ != Tag{']'}) && (*tok_ != Tag{')'}))
+                lst.emplace_back(pbool());
+
+            while(*tok_ == Tag{','}) {
+
+                move();
+                lst.emplace_back(pbool());
+            }
+
+            return lst;
         }
     }
 }

@@ -34,6 +34,8 @@ namespace llvmc {
         std::unique_ptr<inter::Expr> term();
         std::unique_ptr<inter::Expr> unary();
         std::unique_ptr<inter::Expr> factor();
+        std::unique_ptr<inter::Expr> access(inter::Id*);
+        inter::ArrList expr_seq();
         
         public:
 

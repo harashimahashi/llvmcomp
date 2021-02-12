@@ -128,17 +128,29 @@ namespace llvmc {
             arr_{ id ? id->compile() : nullptr }, args_{ std::move(vec) } {}
         Value* Access::compile() {
             
-            if(arr_)
+            if(arr_) {
+                
+                std::transform(args_.begin(), args_.end(), args_.begin(),
+                [](auto el) {
+
+                    return Parser::Builder.CreateFPToUI(el, Parser::Builder.getInt32Ty());
+                });
+                args_.emplace_back(Parser::Builder.getInt32(0));
                 return Parser::Builder.CreateGEP(arr_, args_);
+            }
 
             return Parser::LogErrorV("trying to access non-array id");
         }
 
         Load::Load(std::shared_ptr<Id> e) noexcept 
             : Op{ nullptr }, acc_{ e } {}
+        Load::Load(std::unique_ptr<Expr> e) noexcept 
+            : Op{ nullptr }, acc_{ e.release() } {}
         Value* Load::compile() {
 
-            return Parser::Builder.CreateLoad(acc_->compile());
+            auto val = acc_ ? acc_->compile() : nullptr;
+
+            return Parser::Builder.CreateLoad(val);
         }
 
         ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) noexcept
@@ -158,6 +170,8 @@ namespace llvmc {
 
         Store::Store(std::shared_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
             : Op{ nullptr }, acc_{ e }, val_{ std::move(s) } {}
+        Store::Store(std::unique_ptr<Expr> e, std::unique_ptr<Expr> s) noexcept
+            : Op{ nullptr }, acc_{ e.release() }, val_{ std::move(s) } {}
         Value* Store::compile() {
 
             Value* Acc = acc_->compile();
