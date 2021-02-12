@@ -11,8 +11,34 @@ namespace llvmc {
 
         class Parser {
 
-        lexer::Lexer lex;
-        std::unique_ptr<lexer::Token> tok;
+        static inline unsigned err_num = 0;
+
+        std::string path_;
+        lexer::Lexer lex_;
+        std::unique_ptr<lexer::Token> tok_;
+        class EnvGuard;
+
+        std::string get_output_name() const;
+        void move();
+        std::unique_ptr<lexer::Token> match(lexer::Tag);
+        void program_preinit();
+        void fun_stmts();
+        std::unique_ptr<inter::Stmt> fun_def();
+        std::unique_ptr<inter::Expr> fun_call();
+        std::unique_ptr<inter::Stmt> stmts();
+        std::unique_ptr<inter::Stmt> stmt();
+        std::unique_ptr<inter::Stmt> decls();
+        std::unique_ptr<inter::Stmt> assign();
+        std::unique_ptr<inter::Expr> pbool();
+        std::unique_ptr<inter::Expr> join();
+        std::unique_ptr<inter::Expr> equality();
+        std::unique_ptr<inter::Expr> rel();
+        std::unique_ptr<inter::Expr> expr();
+        std::unique_ptr<inter::Expr> term();
+        std::unique_ptr<inter::Expr> unary();
+        std::unique_ptr<inter::Expr> factor();
+        std::unique_ptr<inter::Expr> access(inter::Id*);
+        inter::ArrList expr_seq();
         
         public:
 
@@ -23,6 +49,11 @@ namespace llvmc {
             static inline llvm::DataLayout layout{ Module.get() };
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
+            Parser(lexer::Lexer, std::string);
+
+            void program();
+            
+            static std::nullptr_t LogErrorV(std::string);
         };
     }
 }

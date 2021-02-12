@@ -26,16 +26,22 @@ namespace llvmc {
 
         Token::Token(int t) noexcept : tag_{ t } {}
         Token::~Token() = default;
-        Token::operator int() const noexcept {
-            return tag_cast(tag_);
+        Token::operator Tag() const noexcept {
+            
+            return tag_;
         }
 
         Num::Num(double v) noexcept : Token{ tag_cast(Tag::NUM) }, val_{ v } {}
         Num::operator double() const noexcept {
+            
             return val_;
         }
         
         Word::Word(std::string s, int tag) : Token{ tag }, lexeme_{ s } {}
+        bool Word::operator==(Word const& w) const noexcept {
+
+            return lexeme_ == w.lexeme_;
+        }
 
         const Word 
             Word::And{ "&&", tag_cast(Tag::AND) },
@@ -44,7 +50,6 @@ namespace llvmc {
             Word::ne{ "!=", tag_cast(Tag::NE) }, 
             Word::le{ "<=", tag_cast(Tag::LE) }, 
             Word::ge{ ">=", tag_cast(Tag::GE) }, 
-            Word::minus{ "minus", tag_cast(Tag::MINUS) }, 
             Word::True{ "true", tag_cast(Tag::TRUE) }, 
             Word::False{ "false", tag_cast(Tag::FALSE) };
 
@@ -85,8 +90,8 @@ namespace llvmc {
             reserve(Word{ "let", tag_cast(Tag::LET) });
             reserve(Word{ "return", tag_cast(Tag::RETURN) });
             reserve(Word::True); reserve(Word::False);
-            words_.emplace("print", Word{ "printf", tag_cast(Tag::ID) });
-            words_.emplace("read", Word{ "scanf", tag_cast(Tag::ID) });
+            words_.emplace("print", Word{ "print", tag_cast(Tag::ID) });
+            words_.emplace("read", Word{ "read", tag_cast(Tag::ID) });
 
             readch();
         }

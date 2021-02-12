@@ -24,7 +24,7 @@ namespace llvmc {
 
             Token(int) noexcept;
             virtual ~Token();
-            operator int() const noexcept;
+            operator Tag() const noexcept;
         };
 
         class Num : public Token {
@@ -42,8 +42,10 @@ namespace llvmc {
         public:
 
             Word(std::string, int);
+
+            bool operator==(Word const&) const noexcept;
             
-            static const Word And, Or, eq, ne, le, ge, minus, True, False;
+            static const Word And, Or, eq, ne, le, ge, True, False;
             std::string lexeme_;
         };
 

@@ -11,24 +11,25 @@ param_seq -> param_seq, ID
 	| ID
 stmts -> stmts stmt
 	| stmt
-stmt -> decl;
-	| decl_init;
-	| assign
+stmt -> decls;
+	| assign;
 	| bool;
 	| if_stmt
 	| while_stmt
-	| repeat_until_stmt
+	| repeat_until_stmt;
 	| for_stmt
 	| BREAK;
 	| RETURN bool;
-decl -> decl[bool]
+decls -> decl
+	| decl_init
+decl -> decl[NUM]
 	| LET ID
 decl_init -> decl = bool 
-assign -> access_expr = bool;
+assign -> access_expr = bool
 if_stmt -> IF bool IDENT stmts DEIDENT
 	| IF bool IDENT stmts DEIDENT ELSE IDENT stmts DEIDENT
 while_stmt -> WHILE bool IDENT stmts DEIDENT
-repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool;
+repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool
 for_stmt -> FOR decl_init TO bool IDENT stmts DEIDENT
 	| FOR decl_init DOWNTO bool IDENT stmts DEIDENT
 bool -> bool || join

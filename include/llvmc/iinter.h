@@ -121,11 +121,12 @@ namespace llvmc {
 
         class Load : public Op {
 
-            std::shared_ptr<Id> acc_;
+            std::shared_ptr<Expr> acc_;
 
         public:
 
             Load(std::shared_ptr<Id>) noexcept;
+            Load(std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -149,6 +150,7 @@ namespace llvmc {
         public:
 
             Store(std::shared_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
+            Store(std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -224,8 +226,19 @@ namespace llvmc {
             Stmt(unsigned = 0);
 
             const BBList List;
-            static const Stmt& empty;
             static Stmt* enclosing;
+        };
+
+        class StmtSeq : public Stmt {
+
+            std::unique_ptr<Stmt> stmt1_;
+            std::unique_ptr<Stmt> stmt2_;
+
+        public:
+
+            StmtSeq(std::unique_ptr<Stmt>,
+                std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
         };
 
         class ExprStmt : public Stmt {
@@ -240,14 +253,24 @@ namespace llvmc {
 
         class FunStmt : public Stmt {
 
-            std::string name_;
-            ArgList args_;
+            std::unique_ptr<Stmt> stmt_;
 
         public:
 
             FunStmt(std::unique_ptr<lexer::Token>, ArgList);
+            void init(std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         }; 
+
+        class MainStmt : public Stmt {
+
+            std::unique_ptr<Stmt> stmt_;
+
+        public:
+
+            MainStmt(std::unique_ptr<Stmt>);
+            llvm::Value* compile() override;
+        };
 
         class IfElseBase : public Stmt {
             
@@ -369,7 +392,7 @@ namespace llvmc {
 
         class Break : public Stmt {
 
-            Stmt* stmt_;
+            llvm::BasicBlock* bb;
 
         public:
 
