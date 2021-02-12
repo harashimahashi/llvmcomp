@@ -1,4 +1,8 @@
 #include <llvmc/iparser.h>
+#include <regex>
+#include <fstream>
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/raw_os_ostream.h"
 
 namespace llvmc {
 
@@ -25,9 +29,23 @@ namespace llvmc {
             }
         };
 
-        Parser::Parser(Lexer lex) : lex_{ std::move(lex) } {
+        Parser::Parser(Lexer lex, std::string p) 
+            : lex_{ std::move(lex) }, path_{ std::move(p) } {
 
             move();
+        }
+
+        std::string Parser::get_output_name() const {
+
+            std::regex FilenamePattern("[^/]+$");
+            std::smatch RegexMatch;
+            std::regex_search(path_, RegexMatch, FilenamePattern);
+            std::string FileName = RegexMatch[0].str();
+
+            std::regex ExtensionPattern("\\.txt?$");
+            std::string Name = std::regex_replace(FileName, ExtensionPattern, "");
+
+            return Name + ".ll";
         }
 
         std::nullptr_t Parser::LogErrorV(std::string s) {
@@ -146,6 +164,11 @@ namespace llvmc {
 
                 stmt->compile();
             });
+
+            std::ofstream out{ get_output_name() };
+            raw_os_ostream OutputFile{ out };
+
+            Module->print(OutputFile, nullptr);
         }
 
         std::unique_ptr<Stmt> Parser::fun_def() {

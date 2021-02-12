@@ -13,10 +13,12 @@ namespace llvmc {
 
         static inline unsigned err_num = 0;
 
+        std::string path_;
         lexer::Lexer lex_;
         std::unique_ptr<lexer::Token> tok_;
         class EnvGuard;
 
+        std::string get_output_name() const;
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
         void program_preinit();
@@ -47,7 +49,7 @@ namespace llvmc {
             static inline llvm::DataLayout layout{ Module.get() };
             static inline std::shared_ptr<symbols::Env> top = nullptr;
 
-            Parser(lexer::Lexer);
+            Parser(lexer::Lexer, std::string);
 
             void program();
             
