@@ -125,8 +125,7 @@ namespace llvmc {
 
         public:
 
-            Load(std::shared_ptr<Id>) noexcept;
-            Load(std::unique_ptr<Expr>) noexcept;
+            Load(std::shared_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -150,7 +149,6 @@ namespace llvmc {
         public:
 
             Store(std::shared_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
-            Store(std::unique_ptr<Expr>, std::unique_ptr<Expr>) noexcept;
             llvm::Value* compile() override;
         };
 
@@ -219,14 +217,24 @@ namespace llvmc {
 
         class Stmt : public Node {
 
-            BBList compute_bb(unsigned);
+        protected:
+
+            static inline Stmt* enclosing_ = nullptr;
+            llvm::BasicBlock* create_bb() const;
+            llvm::BasicBlock* emit_bb(
+                llvm::BasicBlock* = nullptr) const;
 
         public:
 
-            Stmt(unsigned = 0);
+            class EnclosingGuard {
 
-            const BBList List;
-            static Stmt* enclosing;
+                Stmt* saved_;
+
+            public:
+
+                EnclosingGuard(Stmt*);
+                ~EnclosingGuard();
+            };
         };
 
         class StmtSeq : public Stmt {
@@ -243,11 +251,11 @@ namespace llvmc {
 
         class ExprStmt : public Stmt {
 
-            std::unique_ptr<Expr> expr_;
+            std::shared_ptr<Expr> expr_;
 
         public:
 
-            ExprStmt(std::unique_ptr<Expr> = nullptr);
+            ExprStmt(std::shared_ptr<Expr> = nullptr);
             llvm::Value* compile() override;
         };
 
@@ -279,23 +287,21 @@ namespace llvmc {
 
         protected:
 
-            void emit_if() const;
-            virtual void emit_else() const = 0;
+            llvm::User* emit_if() const;
+            virtual void emit_else(llvm::User*) const = 0;
 
         public:
 
             IfElseBase(std::unique_ptr<Expr>,
-                std::unique_ptr<Stmt>, unsigned);
+                std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         };
 
         class If : public IfElseBase {
 
-            static const unsigned num_blocks_ = 2;
-
         protected:
 
-            void emit_else() const override;
+            void emit_else(llvm::User*) const override;
 
         public:
 
@@ -305,12 +311,11 @@ namespace llvmc {
 
         class IfElse : public IfElseBase {
 
-            static const unsigned num_blocks_ = 3;
             std::unique_ptr<Stmt> stmt_;
 
         protected: 
 
-            void emit_else() const override;
+            void emit_else(llvm::User*) const override;
 
         public:
 
@@ -326,51 +331,46 @@ namespace llvmc {
         protected:
 
             virtual llvm::Value* emit_preloop() const;
-            void emit_cond(llvm::BasicBlock* const,
-                llvm::BasicBlock* const) const;
-            void emit_body() const;
+            void emit_cond(llvm::BasicBlock*,
+                llvm::BasicBlock*) const;
+            void emit_body(llvm::BasicBlock*) const;
             virtual void emit_head(llvm::Value*) const = 0;
+            void fix_br(llvm::BasicBlock*,
+                llvm::BasicBlock*) const;
 
         public:
 
-            LoopBase(unsigned);
+            LoopBase();
             void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         };
 
         class While : public LoopBase {
 
-            static const unsigned num_blocks_ = 3;
-
         protected:
 
             void emit_head(llvm::Value*) const override;
 
         public:
 
-            While();
             void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         };
 
         class RepeatUntil : public LoopBase {
 
-            static const unsigned num_blocks_ = 2;
-
         protected:
 
             void emit_head(llvm::Value*) const override;
 
         public:
 
-            RepeatUntil();
             void init(std::unique_ptr<Expr>, std::unique_ptr<Stmt>);
             llvm::Value* compile() override;
         };
 
         class For : public LoopBase {
 
-            static const unsigned num_blocks_ = 3;
             std::unique_ptr<Stmt> stmt_;
             bool to_downto_{ true };
 
@@ -392,7 +392,7 @@ namespace llvmc {
 
         class Break : public Stmt {
 
-            llvm::BasicBlock* bb;
+            Stmt* stmt_;
 
         public:
 

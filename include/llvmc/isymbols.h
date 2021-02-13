@@ -18,6 +18,7 @@ namespace llvmc {
 
             void insert(std::string, std::shared_ptr<inter::Id>);
             std::shared_ptr<inter::Id> get(std::string);
+            std::shared_ptr<inter::Id> get_current(std::string);
 
         };
     }
