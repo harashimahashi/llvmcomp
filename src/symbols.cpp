@@ -17,6 +17,14 @@ namespace llvmc {
             }
             return nullptr;
         }
+        std::shared_ptr<inter::Id> Env::get_current(std::string t) {
+
+            auto found = table_.find(t);
+            
+            if(found != table_.end()) return found->second;
+
+            return nullptr;
+        }
 
     }
 }

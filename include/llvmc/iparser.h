@@ -22,6 +22,7 @@ namespace llvmc {
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
         void program_preinit();
+        void program_postinit();
         void fun_stmts();
         std::unique_ptr<inter::Stmt> fun_def();
         std::unique_ptr<inter::Expr> fun_call();

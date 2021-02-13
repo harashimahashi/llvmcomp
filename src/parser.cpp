@@ -121,11 +121,27 @@ namespace llvmc {
             
             Builder.SetInsertPoint(mainBB);
         }
+        void Parser::program_postinit() {
+
+            auto main = Module->getFunction("main");
+            auto& mainBB = main->getEntryBlock();
+            Builder.SetInsertPoint(&mainBB);
+            Builder.CreateRet(Builder.getInt32(0)); 
+        }
 
         void Parser::program() {
             
             program_preinit();
             fun_stmts();
+            program_postinit();
+
+            if(!err_num) {
+
+                std::ofstream out{ get_output_name() };
+                raw_os_ostream OutputFile{ out };
+
+                Module->print(OutputFile, nullptr);
+            }
         }
 
         void Parser::fun_stmts() {
@@ -164,11 +180,6 @@ namespace llvmc {
 
                 stmt->compile();
             });
-
-            std::ofstream out{ get_output_name() };
-            raw_os_ostream OutputFile{ out };
-
-            Module->print(OutputFile, nullptr);
         }
 
         std::unique_ptr<Stmt> Parser::fun_def() {
@@ -234,9 +245,11 @@ namespace llvmc {
                     return assign();
                     break;
                 case Tag::IF:
-                    {
+                    {   
                         match(Tag::IF); 
                         exp = pbool();
+                        
+                        EnvGuard g{};
 
                         match(Tag::IDENT);
                         stmt1 = stmts();
@@ -257,25 +270,26 @@ namespace llvmc {
                 case Tag::WHILE:
                     {
                         auto while_ = std::make_unique<While>();
-                        saved = Stmt::enclosing;
-                        Stmt::enclosing = while_.get();
+                        Stmt::EnclosingGuard eg{ while_.get() };
                         
                         match(Tag::WHILE);
                         exp = pbool();
+
+                        EnvGuard g{};
 
                         match(Tag::IDENT);
                         stmt1 = stmts();
                         match(Tag::DEIDENT);
                         while_->init(std::move(exp), std::move(stmt1));
-                        Stmt::enclosing = saved;
                         return while_;
 
                     }
                 case Tag::REPEAT:
                     {
                         auto repeat_ = std::make_unique<RepeatUntil>();
-                        saved = Stmt::enclosing;
-                        Stmt::enclosing = repeat_.get();
+                        Stmt::EnclosingGuard eg{ repeat_.get() };
+
+                        EnvGuard g{};
 
                         match(Tag::REPEAT);
                         match(Tag::IDENT);
@@ -285,15 +299,15 @@ namespace llvmc {
                         match(Tag::UNTIL);
                         exp = pbool();
                         repeat_->init(std::move(exp), std::move(stmt1));
-                        Stmt::enclosing = saved;
 
                         return repeat_;
                     }
                 case Tag::FOR:
                     {
                         auto for_ = std::make_unique<For>();
-                        saved = Stmt::enclosing;
-                        Stmt::enclosing = for_.get();
+                        Stmt::EnclosingGuard eg{ for_.get() };
+
+                        EnvGuard g{};
 
                         match(Tag::FOR);
                         stmt1 = decls();
@@ -325,15 +339,13 @@ namespace llvmc {
                 default:
                     return std::make_unique<ExprStmt>(pbool());
             }
-
-            return std::unique_ptr<Stmt>{ nullptr };
         }
 
         std::unique_ptr<Stmt> Parser::decls() {
             
             match(Tag::LET);
             auto name = match(Tag::ID);
-            std::shared_ptr<Id> id;
+            std::shared_ptr<Expr> id;
 
             if(*tok_ != Tag{'['})
                 id = Id::get_id(std::move(name));
@@ -369,7 +381,7 @@ namespace llvmc {
                 id = Array::get_array(std::move(name), idxs);
             }
 
-            if(*tok_ != Tag{'='}) return nullptr;
+            if(*tok_ != Tag{'='}) return std::make_unique<ExprStmt>(id);
             
             move();
             auto store = std::make_unique<Store>(id, pbool());
