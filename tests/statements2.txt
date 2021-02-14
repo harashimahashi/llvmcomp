@@ -1,0 +1,7 @@
+fun foo()
+	for let i = 1 to i <= 5
+		for let j = 1 to j <= 5
+			print(i * j);
+	return 0;
+
+foo()
