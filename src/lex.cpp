@@ -118,7 +118,18 @@ namespace llvmc {
                         new_ident_ = 0;
                         for(; readch(), peek_ == '\t';) ++new_ident_;
 
-                        if(new_ident_ == ident_) return scan();
+                        if(new_ident_ == ident_) {
+
+                            while(peek_ == ' ') readch();
+                            if(peek_ == '\n') {
+
+                                new_ident_ = 0;
+                                --ident_;
+                                return std::make_unique<Token>(tag_cast(Tag::DEIDENT));
+                            }
+                            
+                            return scan();
+                        }
                         else {
                             if(new_ident_ < ident_) {
                                 --ident_;

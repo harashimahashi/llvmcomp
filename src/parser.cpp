@@ -50,7 +50,7 @@ namespace llvmc {
 
         std::nullptr_t Parser::LogErrorV(std::string s) {
             
-            ++err_num;
+            ++err_num_;
             errs() << "error:" << Lexer::line_ << ": " << s << '\n';
             return nullptr;
         }
@@ -135,7 +135,7 @@ namespace llvmc {
             fun_stmts();
             program_postinit();
 
-            if(!err_num) {
+            if(!err_num_) {
 
                 std::ofstream out{ get_output_name() };
                 raw_os_ostream OutputFile{ out };
@@ -146,7 +146,7 @@ namespace llvmc {
 
         void Parser::fun_stmts() {
 
-            std::vector<std::unique_ptr<Stmt>> program;
+            std::vector<std::unique_ptr<Stmt>> calls;
 
             while(tok_) {
 
@@ -154,35 +154,46 @@ namespace llvmc {
 
                     case Tag::FUN:
                         {
-                            auto fun = fun_def();
-                            program.emplace_back(std::move(fun));
+                            fun_def();
                             break;
                         }
                     case Tag::ID:
                         {
                             auto call = std::make_unique<ExprStmt>(fun_call());
-                            program.emplace_back(
-                                std::make_unique<MainStmt>(std::move(call)));
+                            calls.emplace_back(std::move(call));
                             break;
                         }
+                    case Tag{';'}:
+                        move();
+                        break;
+                    default:
+                        move();
+                        LogErrorV("syntax error");
+                    break;
                 }
             }
 
-            if(err_num) {
+            if(err_num_) {
                 
-                std::string err = err_num > 1 ? "errors" : "error";
+                std::string err = err_num_ > 1 ? "errors" : "error";
 
-                errs() << std::to_string(err_num) + ' ' + err + " generated\n";
+                errs() << std::to_string(err_num_) + ' ' + err + " generated\n";
                 return;
             }
 
-            std::for_each(program.begin(), program.end(), [](auto&& stmt) {
+            auto currBB = Parser::Builder.GetInsertBlock();
+            auto main = Parser::Module->getFunction("main");
+            auto& mainBB = main->getEntryBlock();
+
+            Parser::Builder.SetInsertPoint(&mainBB);
+
+            std::for_each(calls.begin(), calls.end(), [](auto&& stmt) {
 
                 stmt->compile();
             });
         }
 
-        std::unique_ptr<Stmt> Parser::fun_def() {
+        void Parser::fun_def() {
 
             match(Tag::FUN);
             auto name = match(Tag::ID);
@@ -198,13 +209,17 @@ namespace llvmc {
 
             EnvGuard g{};
             
-            auto fun = std::make_unique<FunStmt>(std::move(name), std::move(lst));
+            FunStmt fun{ std::move(name), std::move(lst) };
 
             match(Tag::IDENT);
-            fun->init(stmts());
+            fun.init(stmts());
             match(Tag::DEIDENT);
 
-            return fun;
+            fun.compile();
+
+            if(!ret_num_)
+                LogErrorV("function must have a return statement");
+                
         }
 
         std::unique_ptr<Expr> Parser::fun_call() {
@@ -335,6 +350,7 @@ namespace llvmc {
                 case Tag::RETURN:
                     match(Tag::RETURN);
                     exp = pbool();
+                    ++ret_num_;
                     return std::make_unique<Return>(std::move(exp));
                 default:
                     return std::make_unique<ExprStmt>(pbool());
@@ -585,6 +601,7 @@ namespace llvmc {
                     match(Tag{']'});
                     return exp;
                 default:
+                    move();
                     return LogErrorV("syntax error");
             }
         }

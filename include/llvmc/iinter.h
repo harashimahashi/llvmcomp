@@ -270,16 +270,6 @@ namespace llvmc {
             llvm::Value* compile() override;
         }; 
 
-        class MainStmt : public Stmt {
-
-            std::unique_ptr<Stmt> stmt_;
-
-        public:
-
-            MainStmt(std::unique_ptr<Stmt>);
-            llvm::Value* compile() override;
-        };
-
         class IfElseBase : public Stmt {
             
             std::unique_ptr<Expr> expr_;

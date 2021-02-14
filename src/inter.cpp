@@ -459,21 +459,6 @@ namespace llvmc {
             return nullptr;
         }
 
-        MainStmt::MainStmt(std::unique_ptr<Stmt> s) : stmt_{ std::move(s) } {}
-        Value* MainStmt::compile() {
-
-            auto currBB = Parser::Builder.GetInsertBlock();
-            auto main = Parser::Module->getFunction("main");
-            auto& mainBB = main->getEntryBlock();
-
-            Parser::Builder.SetInsertPoint(&mainBB);
-            stmt_->compile();
-
-            Parser::Builder.SetInsertPoint(currBB);
-
-            return nullptr;
-        }
-
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) 
             : expr_{ std::move(e) }, stmt_{ std::move(s) } {}
         User* IfElseBase::emit_if() const {

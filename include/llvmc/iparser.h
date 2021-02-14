@@ -11,7 +11,8 @@ namespace llvmc {
 
         class Parser {
 
-        static inline unsigned err_num = 0;
+        static inline unsigned err_num_ = 0;
+        static inline unsigned ret_num_ = 0;
 
         std::string path_;
         lexer::Lexer lex_;
@@ -24,7 +25,7 @@ namespace llvmc {
         void program_preinit();
         void program_postinit();
         void fun_stmts();
-        std::unique_ptr<inter::Stmt> fun_def();
+        void fun_def();
         std::unique_ptr<inter::Expr> fun_call();
         std::unique_ptr<inter::Stmt> stmts();
         std::unique_ptr<inter::Stmt> stmt();
