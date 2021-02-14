@@ -9,8 +9,11 @@ target_link_libraries(llvmc_lib PRIVATE ${llvm_libs})
 
 target_compile_features(llvmc_lib PUBLIC cxx_std_20)
 
+string(REPLACE "." ";" COMP_VER_LIST ${CMAKE_CXX_COMPILER_VERSION})
+list(GET COMP_VER_LIST 0 COMP_VER_MAJOR)
+
 target_link_options(llvmc_lib PUBLIC
-    $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=lld>
+    $<$<AND:$<NOT:$<PLATFORM_ID:Windows>>,$<CXX_COMPILER_ID:AppleClang,Clang>>:-fuse-ld=lld-${COMP_VER_MAJOR}>
 )
 
 set_target_properties(
