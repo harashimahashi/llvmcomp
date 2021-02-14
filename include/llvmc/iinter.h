@@ -110,12 +110,12 @@ namespace llvmc {
 
         class Access : public Op {
 
-            llvm::Value* arr_;
-            ValList args_;
+            std::shared_ptr<Id> arr_;
+            ArrList args_;
 
         public:
 
-            Access(Id*, ValList);
+            Access(std::shared_ptr<Id>, ArrList);
             llvm::Value* compile() override;
         };
 

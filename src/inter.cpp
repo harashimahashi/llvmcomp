@@ -100,13 +100,13 @@ namespace llvmc {
                 switch(*op_) {
                     
                     case Tag{'+'}:
-                        return Parser::Builder.CreateFAdd(L, R, "addtmp");
+                        return Parser::Builder.CreateFAdd(L, R);
                     case Tag{'-'}:
-                        return Parser::Builder.CreateFSub(L, R, "subtmp");
+                        return Parser::Builder.CreateFSub(L, R);
                     case Tag{'*'}:
-                        return Parser::Builder.CreateFMul(L, R, "multmp");
+                        return Parser::Builder.CreateFMul(L, R);
                     case Tag{'/'}:
-                        return Parser::Builder.CreateFDiv(L, R, "muldiv");
+                        return Parser::Builder.CreateFDiv(L, R);
                 }
             }
             
@@ -121,14 +121,14 @@ namespace llvmc {
 
                 Value* E = exp_->compile();
 
-                return Parser::Builder.CreateFNeg(E, "subneg");
+                return Parser::Builder.CreateFNeg(E);
             }
 
             return Parser::LogErrorV("invalid operand type");
         }
 
-        Access::Access(Id* id, ValList vec) : Op{ nullptr }, 
-            arr_{ id ? id->compile() : nullptr }, args_{ std::move(vec) } {}
+        Access::Access(std::shared_ptr<Id> id, ArrList vec) : Op{ nullptr }, 
+            arr_{ id }, args_{ std::move(vec) } {}
         Value* Access::compile() {
             
             if(arr_) {
@@ -136,12 +136,12 @@ namespace llvmc {
                 ValList args{ Parser::Builder.getInt32(0) };
                 
                 std::transform(args_.begin(), args_.end(), std::back_inserter(args),
-                [](auto el) {
+                [](auto const& el) {
 
-                    return Parser::Builder.CreateFPToUI(el, Parser::Builder.getInt32Ty());
+                    return Parser::Builder.CreateFPToUI(el->compile(), Parser::Builder.getInt32Ty());
                 });
 
-                return Parser::Builder.CreateGEP(arr_, args);
+                return Parser::Builder.CreateGEP(arr_->compile(), args);
             }
 
             return Parser::LogErrorV("trying to access non-array id");
@@ -321,35 +321,35 @@ namespace llvmc {
                 if(auto W = dynamic_cast<Word const*>(op_.get()); W) {
 
                     if(*W == Word::Or) 
-                        L = Parser::Builder.CreateOr(L, R, "subor");
+                        L = Parser::Builder.CreateOr(L, R);
                     else if(*W == Word::And) 
-                        L = Parser::Builder.CreateAnd(L, R, "suband");
+                        L = Parser::Builder.CreateAnd(L, R);
                     else if(*W == Word::le) 
-                        L = Parser::Builder.CreateFCmpULE(L, R, "subcmp");
+                        L = Parser::Builder.CreateFCmpULE(L, R);
                     else if(*W == Word::ge) 
-                        L = Parser::Builder.CreateFCmpUGE(L, R, "subcmp");
+                        L = Parser::Builder.CreateFCmpUGE(L, R);
                     else if(*W == Word::eq) 
-                        L = Parser::Builder.CreateFCmpUEQ(L, R, "subcmp");
+                        L = Parser::Builder.CreateFCmpUEQ(L, R);
                     else if(*W == Word::ne) 
-                        L = Parser::Builder.CreateFCmpUNE(L, R, "subcmp");
+                        L = Parser::Builder.CreateFCmpUNE(L, R);
 
                     return Parser::Builder.CreateUIToFP(L,
-                        Parser::Builder.getDoubleTy(), "booltmp");
+                        Parser::Builder.getDoubleTy());
                 }
                 else {
 
                     switch(*op_) {
 
                         case Tag{'<'}:
-                            L = Parser::Builder.CreateFCmpULT(L, R, "subcmp");
+                            L = Parser::Builder.CreateFCmpULT(L, R);
                             break;
                         case Tag{'>'}:
-                            L = Parser::Builder.CreateFCmpUGT(L, R, "subcmp");
+                            L = Parser::Builder.CreateFCmpUGT(L, R);
                             break;
                     }
 
                     return Parser::Builder.CreateUIToFP(L,
-                        Parser::Builder.getDoubleTy(), "booltmp");
+                        Parser::Builder.getDoubleTy());
                 }
             }
 
@@ -373,12 +373,12 @@ namespace llvmc {
                             Parser::Builder.getTrue());
                         break;
                     case Tag{'-'}:
-                        E = Parser::Builder.CreateNot(E, "subnot");
+                        E = Parser::Builder.CreateNot(E);
                         break;
                 }
 
                 return Parser::Builder.CreateUIToFP(E,
-                        Parser::Builder.getDoubleTy(), "booltmp");
+                        Parser::Builder.getDoubleTy());
             }
 
             return Parser::LogErrorV("invalid operand type");

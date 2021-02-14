@@ -398,7 +398,7 @@ namespace llvmc {
             
             if(*tok_ == Tag{'['}) {
 
-                exp = std::shared_ptr<Expr>{ access(id.get()).release() };
+                exp = access(id);
             }
             else if(id) {
 
@@ -566,7 +566,15 @@ namespace llvmc {
                         }
                         else if(*tok_ == Tag{'['}) {
 
-                            return std::make_unique<Load>(access(id.get()));
+                            return std::make_unique<Load>(access(id));
+                        }
+                        else if(*tok_ == Tag{'('}) {
+                
+                            move();
+                            auto ret = std::make_unique<Call>(std::move(tokName), expr_seq());
+                            match(Tag{')'});
+
+                            return ret;
                         }
 
                         return LogErrorV("using of undeclared \'" + name + '\'');
@@ -581,18 +589,18 @@ namespace llvmc {
             }
         }
 
-        std::unique_ptr<Expr> Parser::access(Id* id) {
+        std::unique_ptr<Expr> Parser::access(std::shared_ptr<Id> id) {
 
-            ValList idxs;
+            ArrList idxs;
 
             while(*tok_ == Tag{'['}) {
                 
                 move();
-                idxs.emplace_back(pbool()->compile());
+                idxs.emplace_back(pbool());
                 match(Tag{']'});
             }
 
-            return std::make_unique<Access>(id, idxs);
+            return std::make_unique<Access>(id, std::move(idxs));
         }
 
         ArrList Parser::expr_seq() {
