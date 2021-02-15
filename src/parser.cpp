@@ -562,14 +562,20 @@ namespace llvmc {
 
         std::unique_ptr<Expr> Parser::unary() {
 
-            if(tok_ && ((*tok_ == Tag{'-'}) || (*tok_ == Tag{'!'}))) {
+            if(tok_ && *tok_ == Tag{'-'}) {
 
-                auto op = std::move(tok_); move();
+                auto op = match(Tag{'-'});
+                return std::make_unique<Unary>(
+                    std::move(op), unary());
+            }
+            else if(tok_ && *tok_ == Tag{'!'}) {
+
+                auto op = match(Tag{'!'});
                 return std::make_unique<Not>(
                     std::move(op), unary());
             }
-
-            return factor();
+            else    
+                return factor();
         }
 
         std::unique_ptr<Expr> Parser::factor() {
