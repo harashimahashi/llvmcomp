@@ -47,7 +47,7 @@ namespace llvmc {
         }
 
         Array::Array(std::unique_ptr<lexer::Token> t, Value* V, size_t u, Align a) 
-            : Id{ std::move(t), V }, dim_{ u }, align_{ a } {}
+            : Id{ std::move(t), V }, align_{ a } {}
         std::shared_ptr<Array> Array::get_array(
             std::unique_ptr<lexer::Token> t, IndexList L) {
 
@@ -544,7 +544,7 @@ namespace llvmc {
 
             BBList List{ emit_bb(), create_bb() };
 
-            User* br = Parser::Builder.CreateCondBr(E, List[0], List[1]);
+            Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
             Parser::Builder.SetInsertPoint(List[0]);
             if(stmt_)

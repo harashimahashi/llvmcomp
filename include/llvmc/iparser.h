@@ -13,9 +13,9 @@ namespace llvmc {
 
         static inline unsigned err_num_ = 0;
         static inline unsigned ret_num_ = 0;
-
-        std::string path_;
+        
         lexer::Lexer lex_;
+        std::string path_;
         std::unique_ptr<lexer::Token> tok_;
         class EnvGuard;
 

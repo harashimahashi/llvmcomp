@@ -75,8 +75,6 @@ namespace llvmc {
             llvm::Value* compile() override;
             llvm::Type* get_type() const override;
             llvm::Align get_align() const override;
-
-            const size_t dim_;
         };
 
         class Op : public Expr {
