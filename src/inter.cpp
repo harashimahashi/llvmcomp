@@ -319,26 +319,33 @@ namespace llvmc {
                     };
             Type* T;
 
-            if(auto A = dynamic_cast<ArrayConstant const*>(lst.begin()->get())) {
+            try {
 
-                std::transform(lst.begin(), lst.end(),
-                    std::back_inserter(carr), array_cast);
+                if(auto A = dynamic_cast<ArrayConstant const*>(lst.begin()->get())) {
 
-                T = A->carr_->getType();
+                    std::transform(lst.begin(), lst.end(),
+                        std::back_inserter(carr), array_cast);
+
+                    T = A->carr_->getType();
+                }
+                else {
+
+                    std::transform(lst.begin(), lst.end(),
+                        std::back_inserter(carr), constant_cast);
+                    
+                    T = Parser::Builder.getDoubleTy();
+                }
+
+                if(c_err)
+                    Parser::LogErrorV("constant array has non-constant initializer");
+
+                carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
+                align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             }
-            else {
+            catch(std::exception& e) {
 
-                std::transform(lst.begin(), lst.end(),
-                    std::back_inserter(carr), constant_cast);
-                
-                T = Parser::Builder.getDoubleTy();
+                Parser::LogErrorV(e.what());
             }
-
-            if(c_err)
-                Parser::LogErrorV("constant array has non-constant initializer");
-
-            carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
-            align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
         }
         Value* ArrayConstant::compile() {
             
