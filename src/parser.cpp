@@ -192,9 +192,7 @@ namespace llvmc {
                     break;
                 }
             }
-
-            if(err_num_) return;
-
+            
             auto currBB = Parser::Builder.GetInsertBlock();
             auto main = Parser::Module->getFunction("main");
             auto& mainBB = main->getEntryBlock();
