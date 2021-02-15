@@ -61,7 +61,10 @@ namespace llvmc {
         }
 
         std::unique_ptr<Token> Parser::match(Tag t) {
-
+            
+            if(!tok_)
+                throw std::runtime_error{
+                     "Unexpected end of program" };
             if(*tok_ == t) {
                 
                 auto ret = std::move(tok_);
@@ -123,25 +126,37 @@ namespace llvmc {
         }
         void Parser::program_postinit() {
 
-            auto main = Module->getFunction("main");
-            auto& mainBB = main->getEntryBlock();
-            Builder.SetInsertPoint(&mainBB);
             Builder.CreateRet(Builder.getInt32(0)); 
         }
 
         void Parser::program() {
             
             program_preinit();
-            fun_stmts();
+
+            try {
+
+                fun_stmts();
+            }
+            catch(std::exception& e) { 
+                
+                LogErrorV(e.what());
+            }
+
             program_postinit();
 
-            if(!err_num_) {
+            if(err_num_) {
+                
+                std::string err = err_num_ > 1 ? "errors" : "error";
 
-                std::ofstream out{ get_output_name() };
-                raw_os_ostream OutputFile{ out };
-
-                Module->print(OutputFile, nullptr);
+                errs() << std::to_string(err_num_) + ' ' + err + " generated\n";
+                return;
             }
+
+
+            std::ofstream out{ get_output_name() };
+            raw_os_ostream OutputFile{ out };
+
+            Module->print(OutputFile, nullptr);
         }
 
         void Parser::fun_stmts() {
@@ -173,13 +188,7 @@ namespace llvmc {
                 }
             }
 
-            if(err_num_) {
-                
-                std::string err = err_num_ > 1 ? "errors" : "error";
-
-                errs() << std::to_string(err_num_) + ' ' + err + " generated\n";
-                return;
-            }
+            if(err_num_) return;
 
             auto currBB = Parser::Builder.GetInsertBlock();
             auto main = Parser::Module->getFunction("main");
