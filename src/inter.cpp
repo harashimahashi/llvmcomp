@@ -226,8 +226,11 @@ namespace llvmc {
             ValList ArgsV;
             std::transform(args_.begin(), args_.end(),
                 std::back_inserter(ArgsV), [](auto const& el) {
-
-                return el->compile();
+                
+                if(el)
+                    return el->compile();
+                
+                else return (Value*)nullptr;
             });
 
 
