@@ -16,6 +16,10 @@ target_link_options(llvmc_lib PUBLIC
     $<$<AND:$<NOT:$<PLATFORM_ID:Windows>>,$<CXX_COMPILER_ID:AppleClang,Clang>>:-fuse-ld=lld-${COMP_VER_MAJOR}>
 )
 
+target_compile_options(llvmc_lib PRIVATE
+    $<$<NOT:$<OR:$<PLATFORM_ID:Windows>,$<CXX_COMPILER_ID:MSVC>>>: -Wall -Wpedantic -Wno-switch>
+)
+
 set_target_properties(
     llvmc_lib 
     PROPERTIES 

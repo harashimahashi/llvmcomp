@@ -193,7 +193,6 @@ namespace llvmc {
                 }
             }
             
-            auto currBB = Parser::Builder.GetInsertBlock();
             auto main = Parser::Module->getFunction("main");
             auto& mainBB = main->getEntryBlock();
 
@@ -263,7 +262,6 @@ namespace llvmc {
             std::unique_ptr<Expr> exp;
             std::unique_ptr<Stmt> stmt1;
             std::unique_ptr<Stmt> stmt2;
-            Stmt* saved;
 
             check_end();
 
