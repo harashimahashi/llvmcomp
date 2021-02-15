@@ -409,18 +409,10 @@ namespace llvmc {
 
                 Value* E = exp_->compile();
 
-                switch(*op_) {
-                    
-                    case Tag{'!'}:
-                        E = Parser::Builder.CreateXor(
-                            Parser::Builder.CreateFCmpUNE(E,
-                            ConstantFP::get(Parser::Context, APFloat(0.0))),
-                            Parser::Builder.getTrue());
-                        break;
-                    case Tag{'-'}:
-                        E = Parser::Builder.CreateNot(E);
-                        break;
-                }
+                E = Parser::Builder.CreateXor(
+                    Parser::Builder.CreateFCmpUNE(E,
+                    ConstantFP::get(Parser::Context, APFloat(0.0))),
+                    Parser::Builder.getTrue());
 
                 return Parser::Builder.CreateUIToFP(E,
                         Parser::Builder.getDoubleTy());
@@ -496,6 +488,8 @@ namespace llvmc {
                 auto IdPtr = Id::get_id(std::move(lst[i]));
                 Parser::Builder.CreateStore(Func->getArg(i), IdPtr->compile());
             }
+
+            ret_ = Parser::Builder.CreateAlloca(Parser::Builder.getDoubleTy());
         }
         void FunStmt::init(std::unique_ptr<Stmt> s) {
 
@@ -504,6 +498,12 @@ namespace llvmc {
         Value* FunStmt::compile() {
             
             if(stmt_) stmt_->compile();
+
+            if(ret_) {
+            
+                auto V = Parser::Builder.CreateLoad(ret_);
+                Parser::Builder.CreateRet(V);
+            }
 
             return nullptr;
         }
@@ -742,8 +742,9 @@ namespace llvmc {
             : expr_{ std::move(e) } {}
         Value* Return::compile() {
             
-            if(expr_)
-                Parser::Builder.CreateRet(expr_->compile());
+            if(expr_ && ret_)
+                Parser::Builder.CreateStore(
+                    expr_->compile(), ret_);
 
             return nullptr;
         }

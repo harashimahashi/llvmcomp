@@ -220,6 +220,7 @@ namespace llvmc {
         protected:
 
             static inline Stmt* enclosing_ = nullptr;
+            static inline llvm::Value* ret_ = nullptr;
             llvm::BasicBlock* create_bb() const;
             llvm::BasicBlock* emit_bb(
                 llvm::BasicBlock* = nullptr) const;
