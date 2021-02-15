@@ -231,9 +231,11 @@ namespace llvmc {
 
             fun.compile();
 
-            if(!ret_num_)
+            if(!ret_num_) {
+
                 LogErrorV("function must have a return statement");
-                
+            }        
+            ret_num_ = 0;
         }
 
         std::unique_ptr<Expr> Parser::fun_call() {

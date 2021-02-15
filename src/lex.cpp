@@ -124,7 +124,7 @@ namespace llvmc {
                             if(peek_ == '\n') {
 
                                 new_ident_ = 0;
-                                --ident_;
+                                if(ident_) --ident_;
                                 return std::make_unique<Token>(tag_cast(Tag::DEIDENT));
                             }
                             
