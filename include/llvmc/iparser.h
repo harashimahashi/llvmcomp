@@ -20,6 +20,7 @@ namespace llvmc {
         class EnvGuard;
 
         std::string get_output_name() const;
+        void check_end();
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
         void program_preinit();

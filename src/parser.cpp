@@ -55,6 +55,13 @@ namespace llvmc {
             return nullptr;
         }
 
+        void Parser::check_end() {
+
+            if(!tok_) 
+                throw std::runtime_error{ 
+                    "unexpected end of program" };
+        }
+
         void Parser::move() {
 
             tok_ = lex_.scan();
@@ -62,9 +69,7 @@ namespace llvmc {
 
         std::unique_ptr<Token> Parser::match(Tag t) {
             
-            if(!tok_)
-                throw std::runtime_error{
-                     "Unexpected end of program" };
+            check_end();
             if(*tok_ == t) {
                 
                 auto ret = std::move(tok_);
@@ -208,7 +213,7 @@ namespace llvmc {
             auto name = match(Tag::ID);
             match(Tag{'('});
 
-            ArgList lst;
+            ArgList lst{};
             while(*tok_ != Tag{')'}) {
 
                 lst.emplace_back(match(Tag::ID));
@@ -372,6 +377,8 @@ namespace llvmc {
             auto name = match(Tag::ID);
             std::shared_ptr<Expr> id;
 
+            check_end();
+
             if(*tok_ != Tag{'['})
                 id = Id::get_id(std::move(name));
             else {
@@ -421,6 +428,8 @@ namespace llvmc {
             auto id = top->get(name);
             std::shared_ptr<Expr> exp{};
             
+            check_end();
+
             if(*tok_ == Tag{'['}) {
 
                 exp = access(id);
@@ -450,7 +459,7 @@ namespace llvmc {
 
             auto exp = join();
 
-            while(*tok_ == Tag::OR) {
+            while(tok_ && *tok_ == Tag::OR) {
 
                 auto op = match(Tag::OR);
                 exp = std::make_unique<Bool>(
@@ -464,7 +473,7 @@ namespace llvmc {
 
             auto exp = equality();
 
-            while(*tok_ == Tag::AND) {
+            while(tok_ && *tok_ == Tag::AND) {
 
                 auto op = match(Tag::AND);
                 exp = std::make_unique<Bool>(
@@ -478,7 +487,7 @@ namespace llvmc {
 
             auto exp = rel();
 
-            while((*tok_ == Tag::EQ) || (*tok_ == Tag::NE)) {
+            while(tok_ && ((*tok_ == Tag::EQ) || (*tok_ == Tag::NE))) {
 
                 auto op = std::move(tok_); move();
                 exp = std::make_unique<Bool>(
@@ -491,6 +500,8 @@ namespace llvmc {
         std::unique_ptr<Expr> Parser::rel() {
 
             auto exp = expr();
+
+            check_end();
 
             switch(*tok_) {
 
@@ -513,7 +524,7 @@ namespace llvmc {
 
             auto exp = term();
 
-            while((*tok_ == Tag{'+'}) || (*tok_ == Tag{'-'})) {
+            while(tok_ && ((*tok_ == Tag{'+'}) || (*tok_ == Tag{'-'}))) {
 
                 auto op = std::move(tok_); move();
                 exp = std::make_unique<Arith>(
@@ -527,7 +538,7 @@ namespace llvmc {
 
             auto exp = unary();
 
-            while((*tok_ == Tag{'*'}) || (*tok_ == Tag{'/'})) {
+            while(tok_ && ((*tok_ == Tag{'*'}) || (*tok_ == Tag{'/'}))) {
 
                 auto op = std::move(tok_); move();
                 exp = std::make_unique<Arith>(
@@ -539,7 +550,7 @@ namespace llvmc {
 
         std::unique_ptr<Expr> Parser::unary() {
 
-            if((*tok_ == Tag{'-'}) || (*tok_ == Tag{'!'})) {
+            if(tok_ && ((*tok_ == Tag{'-'}) || (*tok_ == Tag{'!'}))) {
 
                 auto op = std::move(tok_); move();
                 return std::make_unique<Not>(
@@ -552,6 +563,8 @@ namespace llvmc {
         std::unique_ptr<Expr> Parser::factor() {
 
             std::unique_ptr<Expr> exp{};
+
+            check_end();
 
             switch(*tok_) {
 
@@ -581,6 +594,8 @@ namespace llvmc {
                             tokName.get())->lexeme_;
                         auto id = top->get(name);
                         
+                        check_end();
+
                         if(auto pId = std::dynamic_pointer_cast<Array>(id); id && !pId) {
 
                             return std::make_unique<Load>(id);
@@ -632,6 +647,8 @@ namespace llvmc {
         ArrList Parser::expr_seq() {
 
             ArrList lst{};
+
+            check_end();
 
             if((*tok_ != Tag{']'}) && (*tok_ != Tag{')'}))
                 lst.emplace_back(pbool());

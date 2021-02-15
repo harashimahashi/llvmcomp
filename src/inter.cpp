@@ -434,6 +434,10 @@ namespace llvmc {
             //function arguments
             SmallVector<Type*, 8> doubles(lst.size(),
                 Parser::Builder.getDoubleTy());
+
+            if(!t)
+                throw std::runtime_error{ "expected function name" };
+
             std::string name_ = static_cast<Word*>(t.get())->lexeme_;
 
             //create function
