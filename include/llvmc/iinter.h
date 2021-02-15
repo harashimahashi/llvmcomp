@@ -156,6 +156,8 @@ namespace llvmc {
 
             std::string name_;
             ArrList args_;
+            unsigned saved_;
+            class LineGuard;
 
         public:
 

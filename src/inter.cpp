@@ -230,8 +230,26 @@ namespace llvmc {
 
         Call::Call(std::unique_ptr<Token> t, ArrList lst) 
             : Op{ std::move(t) }, name_{ static_cast<Word const*>(op_.get())->lexeme_ },
-            args_{ std::move(lst) } {}
+            args_{ std::move(lst) }, saved_{ Lexer::line_ } {}
+        class Call::LineGuard {
+
+            unsigned saved_;
+
+        public:
+
+            LineGuard() {
+
+                saved_ = Lexer::line_;
+            }
+            ~LineGuard() {
+
+                Lexer::line_ = saved_;
+            }
+        };
         Value* Call::compile() {
+
+            LineGuard g{};
+            Lexer::line_ = saved_;
 
             auto Calee = Parser::Module->getFunction(name_);
             if(!Calee) 
