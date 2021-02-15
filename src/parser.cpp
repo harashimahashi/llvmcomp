@@ -215,9 +215,12 @@ namespace llvmc {
 
             ArgList lst{};
             while(*tok_ != Tag{')'}) {
-
-                lst.emplace_back(match(Tag::ID));
+                
+                if(auto arg = match(Tag::ID))
+                    lst.emplace_back(std::move(arg));
                 if(*tok_ == Tag{','}) match(Tag{','});
+                else if((*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
+                    break;
             }
             move();
 
@@ -231,9 +234,11 @@ namespace llvmc {
 
             fun.compile();
 
-            if(!ret_num_)
+            if(!ret_num_) {
+
                 LogErrorV("function must have a return statement");
-                
+            }        
+            ret_num_ = 0;
         }
 
         std::unique_ptr<Expr> Parser::fun_call() {
