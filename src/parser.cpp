@@ -214,12 +214,12 @@ namespace llvmc {
             match(Tag{'('});
 
             ArgList lst{};
-            while(*tok_ != Tag{')'}) {
+            while(tok_ && *tok_ != Tag{')'}) {
                 
                 if(auto arg = match(Tag::ID))
                     lst.emplace_back(std::move(arg));
-                if(*tok_ == Tag{','}) match(Tag{','});
-                else if((*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
+                if(tok_ && *tok_ == Tag{','}) match(Tag{','});
+                else if(tok_ && (*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
                     break;
             }
             move();
@@ -254,6 +254,7 @@ namespace llvmc {
 
         std::unique_ptr<Stmt> Parser::stmts() {
 
+            check_end();
             if(*tok_ == Tag::DEIDENT) return nullptr;
 
             return std::make_unique<StmtSeq>(stmt(), stmts());
@@ -265,6 +266,8 @@ namespace llvmc {
             std::unique_ptr<Stmt> stmt1;
             std::unique_ptr<Stmt> stmt2;
             Stmt* saved;
+
+            check_end();
 
             switch(*tok_) {
 
@@ -380,6 +383,8 @@ namespace llvmc {
             
             match(Tag::LET);
             auto name = match(Tag::ID);
+
+            if(!name) return nullptr;
             std::shared_ptr<Expr> id;
 
             check_end();
@@ -451,6 +456,8 @@ namespace llvmc {
 
                 return std::make_unique<ExprStmt>(std::move(ret));
             }
+            else if(!id) 
+                exp = LogErrorV("using of undeclared \'" + name + '\'');
 
             if(!(*tok_ == Tag{'='})) return nullptr;
 

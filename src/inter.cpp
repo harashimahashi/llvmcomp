@@ -93,7 +93,9 @@ namespace llvmc {
         Value* Arith::compile() {
             
             if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
-   
+                
+                if(!lhs_ || !rhs_) return nullptr;
+
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
@@ -118,6 +120,8 @@ namespace llvmc {
         Value* Unary::compile() {
 
             if(!IArray::is_array(exp_.get())) {
+                
+                if(!exp_) return nullptr;
 
                 Value* E = exp_->compile();
 
@@ -135,11 +139,20 @@ namespace llvmc {
 
                 ValList args{ Parser::Builder.getInt32(0) };
                 
-                std::transform(args_.begin(), args_.end(), std::back_inserter(args),
-                [](auto const& el) {
+                try {
 
-                    return Parser::Builder.CreateFPToUI(el->compile(), Parser::Builder.getInt32Ty());
-                });
+                    std::transform(args_.begin(), args_.end(), std::back_inserter(args),
+                    [](auto const& el) {
+
+                        if(!el) throw std::runtime_error{ "" };
+
+                        return Parser::Builder.CreateFPToUI(el->compile(), Parser::Builder.getInt32Ty());
+                    });
+                }
+                catch(std::exception&) {
+                    
+                    return nullptr;
+                }
 
                 return Parser::Builder.CreateGEP(arr_->compile(), args);
             }
@@ -151,14 +164,18 @@ namespace llvmc {
             : Op{ nullptr }, acc_{ e } {}
         Value* Load::compile() {
 
-            auto val = acc_ ? acc_->compile() : nullptr;
+            if(!acc_) return nullptr;
 
-            return Parser::Builder.CreateLoad(val);
+            auto V = acc_->compile();
+
+            return Parser::Builder.CreateLoad(V);
         }
 
         ArrayLoad::ArrayLoad(std::shared_ptr<Id> e) noexcept
             : Op{ nullptr }, acc_{ std::static_pointer_cast<Array>(e) } {}
         Value* ArrayLoad::compile() {
+
+            if(!acc_) return nullptr;
 
             return acc_->compile();
         }
@@ -175,8 +192,12 @@ namespace llvmc {
             : Op{ nullptr }, acc_{ e }, val_{ std::move(s) } {}
         Value* Store::compile() {
 
+            if(!acc_ || !val_) return nullptr;
+
             Value* Acc = acc_->compile();
             Value* Val = val_->compile();
+
+            if(!Acc || !Val) return nullptr;
 
             if(!IArray::is_array(acc_.get()) && !IArray::is_array(val_.get())){
         
@@ -224,15 +245,21 @@ namespace llvmc {
                 + std::to_string(arg_sz) + " provided");
 
             ValList ArgsV;
-            std::transform(args_.begin(), args_.end(),
-                std::back_inserter(ArgsV), [](auto const& el) {
-                
-                if(el)
-                    return el->compile();
-                
-                else return (Value*)nullptr;
-            });
 
+            try {
+
+                std::transform(args_.begin(), args_.end(),
+                    std::back_inserter(ArgsV), [](auto const& el) {
+                    
+                    if(!el) throw std::runtime_error{ "" };
+
+                    return el->compile();
+                });
+            }
+            catch(std::exception&) {
+
+                return nullptr;
+            }
 
             return Parser::Builder.CreateCall(Calee, ArgsV);
         }
@@ -240,6 +267,8 @@ namespace llvmc {
         FConstant::FConstant(std::unique_ptr<Token> t) noexcept 
             : Expr{ std::move(t) } {}
         Value* FConstant::compile() {
+
+            if(!op_) return nullptr;
 
             return ConstantFP::get(Parser::Context, 
                 APFloat(static_cast<double>(*dynamic_cast<Num const*>(op_.get()))));
@@ -250,11 +279,20 @@ namespace llvmc {
             SmallVector<Constant*, 16> carr;
             bool c_err{ false };
             auto array_cast = [](auto const& el) {
-                        return dynamic_cast<ArrayConstant const*>(el.get())->carr_;
+
+                        auto cnst = dynamic_cast<ArrayConstant const*>(el.get());
+                        if(!cnst)
+                            throw std::runtime_error{ "invalid constant initializer" };
+
+                        return cnst->carr_;
                     };
             auto constant_cast = [&c_err](auto const& el) {
                         
-                        auto c_ = dyn_cast<llvm::Constant>(el.get()->compile());
+                        if(!el) throw std::runtime_error{ "invalid constant initializer" };
+                        auto el_ = el->compile();
+                        if(!el_) throw std::runtime_error{ "invalid constant initializer" };
+
+                        auto c_ = dyn_cast<llvm::Constant>(el_);
 
                         if(c_) return c_;
 
@@ -318,6 +356,8 @@ namespace llvmc {
 
             if(!IArray::is_array(lhs_.get()) && !IArray::is_array(rhs_.get())) {
 
+                if(!lhs_ || !rhs_) return nullptr;
+
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
@@ -364,6 +404,8 @@ namespace llvmc {
         Value* Not::compile() {
 
             if(!IArray::is_array(exp_.get())) {    
+
+                if(!exp_) return nullptr;
 
                 Value* E = exp_->compile();
 
@@ -469,6 +511,8 @@ namespace llvmc {
         IfElseBase::IfElseBase(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s) 
             : expr_{ std::move(e) }, stmt_{ std::move(s) } {}
         User* IfElseBase::emit_if() const {
+
+            if(!expr_ || !(expr_->compile())) return nullptr;
             
             Value* E = Parser::Builder.CreateFPToUI(
                 expr_->compile(), Parser::Builder.getInt1Ty());
@@ -478,7 +522,8 @@ namespace llvmc {
             User* br = Parser::Builder.CreateCondBr(E, List[0], List[1]);
 
             Parser::Builder.SetInsertPoint(List[0]);
-            stmt_->compile();
+            if(stmt_)
+                stmt_->compile();
 
             emit_bb(List[1]);
 
@@ -497,18 +542,20 @@ namespace llvmc {
 
         If::If(std::unique_ptr<Expr> e, std::unique_ptr<Stmt> s)
             : IfElseBase{ std::move(e), std::move(s) } {}
-        void If::emit_else(User* u) const {}
+        void If::emit_else(User*) const {}
 
         IfElse::IfElse(std::unique_ptr<Expr> e, 
             std::unique_ptr<Stmt> s1, std::unique_ptr<Stmt> s2) 
             : IfElseBase{ std::move(e), std::move(s1)},
             stmt_{ std::move(s2) } {}
-        void IfElse::emit_else(User* u) const {
+        void IfElse::emit_else(User* U) const {
+
+            if(!U || !stmt_) return;
 
             stmt_->compile();
 
             auto BB = emit_bb();
-            u->setOperand(0, BB);
+            U->setOperand(0, BB);
 
             Parser::Builder.CreateBr(BB);
             Parser::Builder.SetInsertPoint(BB);
@@ -525,15 +572,19 @@ namespace llvmc {
             return nullptr;
         }
         void LoopBase::emit_cond(BasicBlock* B1, BasicBlock* B2) const {
-
+            
+            if(!expr_ || !(expr_->compile())) return;
+            
             Value* E = Parser::Builder.CreateFPToUI(
                 expr_->compile(), Parser::Builder.getInt1Ty());
 
             Parser::Builder.CreateCondBr(E, B1, B2);
+            
         }
         void LoopBase::emit_body(BasicBlock* BB) const {
 
-            stmt_->compile();
+            if(stmt_)
+                stmt_->compile();
 
             emit_bb(BB);
         }
@@ -633,7 +684,8 @@ namespace llvmc {
         }
         Value* For::emit_preloop() const {
 
-            if(stmt_) return stmt_->compile();
+            if(stmt_) 
+                return stmt_->compile();
 
             return nullptr;
         }
