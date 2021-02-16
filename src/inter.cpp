@@ -294,8 +294,7 @@ namespace llvmc {
 
         ArrayConstant::ArrayConstant(ArrList lst) : Expr{ nullptr } {
 
-            SmallVector<Constant*, 16> carr;
-            bool c_err{ false };
+            SmallVector<Constant*, 16> carr{};
             auto array_cast = [](auto const& el) {
 
                         auto cnst = dynamic_cast<ArrayConstant const*>(el.get());
@@ -304,18 +303,15 @@ namespace llvmc {
 
                         return cnst->carr_;
                     };
-            auto constant_cast = [&c_err](auto const& el) {
+            auto constant_cast = [](auto const& el) {
                         
                         if(!el) throw std::runtime_error{ "invalid constant initializer" };
                         auto el_ = el->compile();
                         if(!el_) throw std::runtime_error{ "invalid constant initializer" };
 
-                        auto c_ = dyn_cast<llvm::Constant>(el_);
+                        if(auto c_ = dyn_cast<llvm::Constant>(el_)) return c_;
 
-                        if(c_) return c_;
-
-                        c_err = true;
-                        return c_;
+                        throw std::runtime_error{ "constant array has non-constant initializer" };
                     };
             Type* T;
 
@@ -336,15 +332,16 @@ namespace llvmc {
                     T = Parser::Builder.getDoubleTy();
                 }
 
-                if(c_err)
-                    Parser::LogErrorV("constant array has non-constant initializer");
-
                 carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
                 align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             }
             catch(std::exception& e) {
 
                 Parser::LogErrorV(e.what());
+                carr_ = ConstantArray::get(
+                    ArrayType::get(
+                        Parser::Builder.getDoubleTy(), 0), carr);
+                align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             }
         }
         Value* ArrayConstant::compile() {
@@ -768,8 +765,9 @@ namespace llvmc {
         Value* Return::compile() {
             
             if(expr_ && ret_)
-                Parser::Builder.CreateStore(
-                    expr_->compile(), ret_);
+                if(auto V = expr_->compile())
+                    Parser::Builder.CreateStore(
+                        expr_->compile(), ret_);
 
             return nullptr;
         }

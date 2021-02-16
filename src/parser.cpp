@@ -215,8 +215,10 @@ namespace llvmc {
                 
                 if(auto arg = match(Tag::ID))
                     lst.emplace_back(std::move(arg));
-                if(tok_ && *tok_ == Tag{','}) match(Tag{','});
-                else if(tok_ && (*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
+
+                check_end();
+                if(*tok_ == Tag{','}) match(Tag{','});
+                else if((*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
                     break;
             }
             move();
@@ -288,7 +290,7 @@ namespace llvmc {
                         stmt1 = stmts();
                         match(Tag::DEIDENT);
 
-                        if(*tok_ != Tag::ELSE)
+                        if(tok_ && *tok_ != Tag::ELSE)
                             return std::make_unique<If>(
                                 std::move(exp), std::move(stmt1));
 
@@ -344,11 +346,11 @@ namespace llvmc {
 
                         match(Tag::FOR);
                         stmt1 = decls();
-                        if(*tok_ == Tag::TO) {
+                        if(tok_ && *tok_ == Tag::TO) {
                             for_->set_to();
                             match(Tag::TO);
                         }
-                        if(*tok_ == Tag::DOWNTO) {
+                        if(tok_ && *tok_ == Tag::DOWNTO) {
                             for_->set_downto();
                             match(Tag::DOWNTO);
                         }
@@ -391,10 +393,10 @@ namespace llvmc {
 
                 IndexList idxs;
 
-                while(*tok_ == Tag{'['}) {
+                while(tok_ && *tok_ == Tag{'['}) {
 
                     move();
-                    if(*tok_ == Tag{'-'}) {
+                    if(tok_ && *tok_ == Tag{'-'}) {
 
                         move();
                         LogErrorV("array size must be positive number");
@@ -404,7 +406,7 @@ namespace llvmc {
                         val = *static_cast<Num const*>(num.get());
                     }
                     else
-                        while(*tok_ != Tag{']'}) move();
+                        while(tok_ && *tok_ != Tag{']'}) move();
                     double intp; 
 
                     if(!(std::modf(val, &intp) == 0)) {
@@ -419,7 +421,7 @@ namespace llvmc {
                 id = Array::get_array(std::move(name), idxs);
             }
 
-            if(*tok_ != Tag{'='}) return std::make_unique<ExprStmt>(id);
+            if(tok_ && *tok_ != Tag{'='}) return std::make_unique<ExprStmt>(id);
             
             move();
             auto store = std::make_unique<Store>(id, pbool());
@@ -455,7 +457,7 @@ namespace llvmc {
             else if(!id) 
                 exp = LogErrorV("using of undeclared \'" + name + '\'');
 
-            if(!(*tok_ == Tag{'='})) return nullptr;
+            if(tok_ && !(*tok_ == Tag{'='})) return nullptr;
 
             move();
             auto stmt = std::make_unique<Store>(exp, pbool());
@@ -614,11 +616,11 @@ namespace llvmc {
 
                             return std::make_unique<Load>(id);
                         }
-                        else if(id && (*tok_ != Tag{'['}) && (*tok_ != Tag{'('})){
+                        else if(pId && (*tok_ != Tag{'['}) && (*tok_ != Tag{'('})){
 
                             return std::make_unique<ArrayLoad>(id);
                         }
-                        else if(*tok_ == Tag{'['}) {
+                        else if(id && *tok_ == Tag{'['}) {
 
                             return std::make_unique<Load>(access(id));
                         }
@@ -648,7 +650,7 @@ namespace llvmc {
 
             ArrList idxs;
 
-            while(*tok_ == Tag{'['}) {
+            while(tok_ && *tok_ == Tag{'['}) {
                 
                 move();
                 idxs.emplace_back(pbool());
@@ -667,7 +669,7 @@ namespace llvmc {
             if((*tok_ != Tag{']'}) && (*tok_ != Tag{')'}))
                 lst.emplace_back(pbool());
 
-            while(*tok_ == Tag{','}) {
+            while(tok_ && *tok_ == Tag{','}) {
 
                 move();
                 lst.emplace_back(pbool());
