@@ -9,38 +9,38 @@ namespace llvmc::parser {
 
     class Parser {
 
-    static inline unsigned err_num_ = 0;
-    static inline unsigned ret_num_ = 0;
-    
-    lexer::Lexer lex_;
-    std::string path_;
-    std::unique_ptr<lexer::Token> tok_;
-    class EnvGuard;
+        static inline unsigned err_num_ = 0;
+        static inline unsigned ret_num_ = 0;
+        
+        lexer::Lexer lex_;
+        std::string path_;
+        std::unique_ptr<lexer::Token> tok_;
+        class EnvGuard;
 
-    std::string get_output_name() const;
-    void check_end();
-    void move();
-    std::unique_ptr<lexer::Token> match(lexer::Tag);
-    void program_preinit();
-    void program_postinit();
-    void fun_stmts();
-    void fun_def();
-    std::unique_ptr<inter::Expr> fun_call();
-    std::unique_ptr<inter::Stmt> stmts();
-    std::unique_ptr<inter::Stmt> stmt();
-    std::unique_ptr<inter::Stmt> decls();
-    std::unique_ptr<inter::Stmt> assign();
-    std::unique_ptr<inter::Expr> pbool();
-    std::unique_ptr<inter::Expr> join();
-    std::unique_ptr<inter::Expr> equality();
-    std::unique_ptr<inter::Expr> rel();
-    std::unique_ptr<inter::Expr> expr();
-    std::unique_ptr<inter::Expr> term();
-    std::unique_ptr<inter::Expr> unary();
-    std::unique_ptr<inter::Expr> factor();
-    std::unique_ptr<inter::Expr> access(
-        std::shared_ptr<inter::Id>);
-    inter::ArrList expr_seq();
+        std::string get_output_name() const;
+        void check_end();
+        void move();
+        std::unique_ptr<lexer::Token> match(lexer::Tag);
+        void program_preinit();
+        void program_postinit();
+        void fun_stmts();
+        void fun_def();
+        std::unique_ptr<inter::Expr> fun_call();
+        std::unique_ptr<inter::Stmt> stmts();
+        std::unique_ptr<inter::Stmt> stmt();
+        std::unique_ptr<inter::Stmt> decls();
+        std::unique_ptr<inter::Stmt> assign();
+        std::unique_ptr<inter::Expr> pbool();
+        std::unique_ptr<inter::Expr> join();
+        std::unique_ptr<inter::Expr> equality();
+        std::unique_ptr<inter::Expr> rel();
+        std::unique_ptr<inter::Expr> expr();
+        std::unique_ptr<inter::Expr> term();
+        std::unique_ptr<inter::Expr> unary();
+        std::unique_ptr<inter::Expr> factor();
+        std::unique_ptr<inter::Expr> access(
+            std::shared_ptr<inter::Id>);
+        inter::ArrList expr_seq();
     
     public:
 
