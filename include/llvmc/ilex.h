@@ -5,69 +5,66 @@
 #include <unordered_map>
 #include <sstream>
 
-namespace llvmc {
+namespace llvmc::lexer {
 
-    namespace lexer {
+    enum class Tag : int {
+        AND = 256, BREAK, REPEAT, ELSE, EQ,
+        FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
+        NUM, OR, TRUE, WHILE, UNTIL, TO, DOWNTO,
+        FOR, IDENT, DEIDENT, FUN, LET, RETURN
+    };
 
-        enum class Tag : int {
-            AND = 256, BREAK, REPEAT, ELSE, EQ,
-            FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
-            NUM, OR, TRUE, WHILE, UNTIL, TO, DOWNTO,
-            FOR, IDENT, DEIDENT, FUN, LET, RETURN
-        };
+    class Token {
+    
+        const Tag tag_;
+    
+    public:
 
-        class Token {
+        Token(int) noexcept;
+        virtual ~Token();
+        operator Tag() const noexcept;
+    };
+
+    class Num : public Token {
+
+        const double val_;
+
+    public:
+
+        Num(double) noexcept;
+        operator double() const noexcept;
+    };
+
+    class Word : public Token {
+
+    public:
+
+        Word(std::string, int);
+
+        bool operator==(Word const&) const noexcept;
         
-            const Tag tag_;
-        
-        public:
+        static const Word And, Or, eq, ne, le, ge, True, False;
+        std::string lexeme_;
+    };
 
-            Token(int) noexcept;
-            virtual ~Token();
-            operator Tag() const noexcept;
-        };
+    class Lexer {
 
-        class Num : public Token {
+        char peek_;
+        std::unordered_map<std::string, Word> words_;
+        unsigned ident_ = 0;
+        unsigned new_ident_ = ident_;
+        std::stringstream source_;
 
-            const double val_;
+        void reserve(Word);
+        void readch();
+        bool readch(char);
 
-        public:
+    public:
 
-            Num(double) noexcept;
-            operator double() const noexcept;
-        };
+        Lexer(std::string);
+        std::unique_ptr<Token> scan();
 
-        class Word : public Token {
-
-        public:
-
-            Word(std::string, int);
-
-            bool operator==(Word const&) const noexcept;
-            
-            static const Word And, Or, eq, ne, le, ge, True, False;
-            std::string lexeme_;
-        };
-
-        class Lexer {
-
-            char peek_;
-            std::unordered_map<std::string, Word> words_;
-            unsigned ident_ = 0;
-            unsigned new_ident_ = ident_;
-            std::stringstream source_;
-
-            void reserve(Word);
-            void readch();
-            bool readch(char);
-
-        public:
-
-            Lexer(std::string);
-            std::unique_ptr<Token> scan();
-
-            static inline unsigned line_ = 1;
-        };
-    }
+        static inline unsigned line_ = 1;
+    };
 }
 #endif
