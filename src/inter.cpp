@@ -304,6 +304,10 @@ namespace llvmc {
         ArrayConstant::ArrayConstant(ArrList lst) : Expr{ nullptr } {
 
             SmallVector<Constant*, 16> carr{};
+
+            carr_ = ConstantArray::get(
+                ArrayType::get(Parser::Builder.getDoubleTy(), 0), carr);
+            align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             auto array_cast = [](auto const& el) {
 
                         auto cnst = dynamic_cast<ArrayConstant const*>(el.get());
@@ -351,10 +355,6 @@ namespace llvmc {
 
                 Parser::LogErrorV(e.what());
             }
-
-            carr_ = ConstantArray::get(
-                ArrayType::get(Parser::Builder.getDoubleTy(), 0), carr);
-            align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
         }
         Value* ArrayConstant::compile() {
             
