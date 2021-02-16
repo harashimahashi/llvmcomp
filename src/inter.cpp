@@ -149,8 +149,12 @@ namespace llvmc {
                     [](auto const& el) {
 
                         if(!el) throw std::runtime_error{ "" };
+                        
+                        auto V = el->compile();
+                        if(!V)
+                            throw std::runtime_error{ "" };
 
-                        return Parser::Builder.CreateFPToUI(el->compile(), Parser::Builder.getInt32Ty());
+                        return Parser::Builder.CreateFPToUI(V, Parser::Builder.getInt32Ty());
                     });
                 }
                 catch(std::exception&) {
@@ -171,6 +175,7 @@ namespace llvmc {
             if(!acc_) return nullptr;
 
             auto V = acc_->compile();
+            if(!V) return nullptr;
 
             return Parser::Builder.CreateLoad(V);
         }
@@ -545,10 +550,14 @@ namespace llvmc {
             : expr_{ std::move(e) }, stmt_{ std::move(s) } {}
         User* IfElseBase::emit_if() const {
 
-            if(!expr_ || !(expr_->compile())) return nullptr;
+            if(!expr_) return nullptr;
+
+            auto V = expr_->compile();
+
+            if(!V) return nullptr;
             
             Value* E = Parser::Builder.CreateFPToUI(
-                expr_->compile(), Parser::Builder.getInt1Ty());
+                V, Parser::Builder.getInt1Ty());
 
             BBList List{ emit_bb(), create_bb() };
 
@@ -606,10 +615,14 @@ namespace llvmc {
         }
         void LoopBase::emit_cond(BasicBlock* B1, BasicBlock* B2) const {
             
-            if(!expr_ || !(expr_->compile())) return;
+            if(!expr_) return;
+
+            auto V = expr_->compile();
+
+            if(!V) return;
             
             Value* E = Parser::Builder.CreateFPToUI(
-                expr_->compile(), Parser::Builder.getInt1Ty());
+                V, Parser::Builder.getInt1Ty());
 
             Parser::Builder.CreateCondBr(E, B1, B2);
             
