@@ -184,6 +184,7 @@ namespace llvmc {
                             break;
                         }
                     case Tag{';'}:
+                    //http://eel.is/c++draft/expr.static.cast#10
                         move();
                         break;
                     default:

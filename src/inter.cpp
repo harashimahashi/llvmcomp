@@ -99,6 +99,8 @@ namespace llvmc {
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
 
+                if(!L || !R) return nullptr;
+
                 switch(*op_) {
                     
                     case Tag{'+'}:
@@ -124,6 +126,8 @@ namespace llvmc {
                 if(!exp_) return nullptr;
 
                 Value* E = exp_->compile();
+
+                if(!E) return nullptr;
 
                 return Parser::Builder.CreateFNeg(E);
             }
@@ -316,33 +320,36 @@ namespace llvmc {
             Type* T;
 
             try {
+                
+                if(lst.size()) {
 
-                if(auto A = dynamic_cast<ArrayConstant const*>(lst.begin()->get())) {
+                    if(auto A = dynamic_cast<ArrayConstant const*>(lst.begin()->get())) {
 
-                    std::transform(lst.begin(), lst.end(),
-                        std::back_inserter(carr), array_cast);
+                        std::transform(lst.begin(), lst.end(),
+                            std::back_inserter(carr), array_cast);
 
-                    T = A->carr_->getType();
+                        T = A->carr_->getType();
+                    }
+                    else {
+
+                        std::transform(lst.begin(), lst.end(),
+                            std::back_inserter(carr), constant_cast);
+                        
+                        T = Parser::Builder.getDoubleTy();
+                    }
+
+                    carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
+                    align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
                 }
-                else {
-
-                    std::transform(lst.begin(), lst.end(),
-                        std::back_inserter(carr), constant_cast);
-                    
-                    T = Parser::Builder.getDoubleTy();
-                }
-
-                carr_ = ConstantArray::get(ArrayType::get(T, lst.size()), carr);
-                align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             }
             catch(std::exception& e) {
 
                 Parser::LogErrorV(e.what());
-                carr_ = ConstantArray::get(
-                    ArrayType::get(
-                        Parser::Builder.getDoubleTy(), 0), carr);
-                align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
             }
+
+            carr_ = ConstantArray::get(
+                ArrayType::get(Parser::Builder.getDoubleTy(), 0), carr);
+            align_ = Parser::layout.getPrefTypeAlign(carr_->getType());
         }
         Value* ArrayConstant::compile() {
             
@@ -382,6 +389,8 @@ namespace llvmc {
 
                 Value* L = lhs_->compile();
                 Value* R = rhs_->compile();
+
+                if(!L || !R) return nullptr;
 
                 if(auto W = dynamic_cast<Word const*>(op_.get()); W) {
 
@@ -430,6 +439,8 @@ namespace llvmc {
                 if(!exp_) return nullptr;
 
                 Value* E = exp_->compile();
+
+                if(!E) return nullptr;
 
                 E = Parser::Builder.CreateXor(
                     Parser::Builder.CreateFCmpUNE(E,
@@ -712,6 +723,8 @@ namespace llvmc {
             return nullptr;
         }
         void For::emit_head(Value* V) const {
+
+            if(!V) return;
 
             Value* L = Parser::Builder.CreateLoad(V);
             Value* Step;
