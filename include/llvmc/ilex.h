@@ -9,7 +9,7 @@ namespace llvmc {
 
     namespace lexer {
 
-        enum class Tag {
+        enum class Tag : int {
             AND = 256, BREAK, REPEAT, ELSE, EQ,
             FALSE, GE, ID, IF, INDEX, LE, MINUS, NE,
             NUM, OR, TRUE, WHILE, UNTIL, TO, DOWNTO,
