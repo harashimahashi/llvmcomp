@@ -522,6 +522,7 @@ namespace llvmc::inter {
         for(size_t i = 0, sz = lst.size(); i < sz; i++) {
 
             auto IdPtr = Id::get_id(std::move(lst[i]));
+            if(!IdPtr) continue;
             Parser::Builder.CreateStore(Func->getArg(i), IdPtr->compile());
         }
 

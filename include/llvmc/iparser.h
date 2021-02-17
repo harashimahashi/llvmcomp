@@ -21,6 +21,10 @@ namespace llvmc::parser {
         void check_end();
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
+
+        template<typename T, typename R, typename F>
+        R make_bool(R, F);
+
         void program_preinit();
         void program_postinit();
         void fun_stmts();
