@@ -255,7 +255,9 @@ namespace llvmc::parser {
         check_end();
         if(*tok_ == Tag::DEIDENT) return nullptr;
 
-        return std::make_unique<StmtSeq>(stmt(), stmts());
+        auto s = stmt();
+
+        return std::make_unique<StmtSeq>(std::move(s), stmts());
     }
 
     std::unique_ptr<Stmt> Parser::stmt() {
