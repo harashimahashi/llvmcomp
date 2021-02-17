@@ -641,7 +641,7 @@ namespace llvmc::parser {
                     }
                     else if(id && *tok_ == Tag{'['}) {
 
-                        return std::make_unique<Load>(access(id));
+                        return std::make_unique<Load>(access(pId));
                     }
                     else if(*tok_ == Tag{'('}) {
             

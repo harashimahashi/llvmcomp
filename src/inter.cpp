@@ -140,27 +140,33 @@ namespace llvmc::inter {
         if(arr_) {
 
             ValList args{ Parser::Builder.getInt32(0) };
+            Value* arr;
             
             try {
 
                 std::transform(args_.begin(), args_.end(), std::back_inserter(args),
                 [](auto const& el) {
 
-                    if(!el) throw std::runtime_error{ "" };
+                    if(!el) throw std::runtime_error{ "invalid index" };
                     
                     auto V = el->compile();
                     if(!V)
-                        throw std::runtime_error{ "" };
+                        throw std::runtime_error{ "invalid index" };
 
                     return Parser::Builder.CreateFPToUI(V, Parser::Builder.getInt32Ty());
                 });
+
+                arr = arr_->compile();
+                auto checkType = cast<AllocaInst>(arr)->getAllocatedType();
+                if(!GetElementPtrInst::getIndexedType(checkType, args))
+                    throw std::runtime_error{ "invalid index" };
             }
-            catch(std::exception&) {
+            catch(std::exception& e) {
                 
-                return nullptr;
+                return Parser::LogErrorV(e.what());
             }
 
-            return Parser::Builder.CreateGEP(arr_->compile(), args);
+            return Parser::Builder.CreateGEP(arr, args);
         }
 
         return Parser::LogErrorV("trying to access non-array id");
