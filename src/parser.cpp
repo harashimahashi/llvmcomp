@@ -60,6 +60,13 @@ namespace llvmc::parser {
                 "unexpected end of program" };
     }
 
+    void Parser::check_depth() {
+
+        if(depth_ >= max_depth_)
+            throw std::runtime_error{ 
+                "reached recursion limits" };
+    }
+
     void Parser::move() {
 
         tok_ = lex_.scan();
@@ -75,6 +82,13 @@ namespace llvmc::parser {
             return ret;
         }
         return LogErrorV("syntax error");
+    }
+
+    template<typename T, typename R, typename F>
+    R Parser::make_bool(R r, F f) {
+
+        auto op = std::move(tok_); move();
+        return std::make_unique<T>(std::move(op), std::move(r), f());
     }
 
     void Parser::program_preinit() {
@@ -217,7 +231,7 @@ namespace llvmc::parser {
 
             check_end();
             if(*tok_ == Tag{','}) match(Tag{','});
-            else if((*tok_ != Tag::ID) && (*tok_ != Tag{')'}))
+            else if(*tok_ != Tag{')'})
                 break;
         }
         move();
@@ -472,9 +486,8 @@ namespace llvmc::parser {
 
         while(tok_ && *tok_ == Tag::OR) {
 
-            auto op = match(Tag::OR);
-            exp = std::make_unique<Bool>(
-                std::move(op), std::move(exp), join());
+            exp = make_bool<Bool>(std::move(exp), 
+                [this]{ return join(); });
         }
 
         return exp;
@@ -486,9 +499,8 @@ namespace llvmc::parser {
 
         while(tok_ && *tok_ == Tag::AND) {
 
-            auto op = match(Tag::AND);
-            exp = std::make_unique<Bool>(
-                std::move(op), std::move(exp), equality());
+            exp = make_bool<Bool>(std::move(exp), 
+                [this]{ return equality(); });
         }
 
         return exp;
@@ -500,9 +512,8 @@ namespace llvmc::parser {
 
         while(tok_ && ((*tok_ == Tag::EQ) || (*tok_ == Tag::NE))) {
 
-            auto op = std::move(tok_); move();
-            exp = std::make_unique<Bool>(
-                std::move(op), std::move(exp), rel());
+            exp = make_bool<Bool>(std::move(exp), 
+                [this]{ return rel(); });
         }
 
         return exp;
@@ -516,19 +527,25 @@ namespace llvmc::parser {
 
         switch(*tok_) {
 
-            [[fallthrough]];
             case Tag{'<'}:
+                exp = make_bool<Bool>(std::move(exp),
+                    [this]{ return expr(); });
+                break;
             case Tag::LE:
+                exp = make_bool<Bool>(std::move(exp),
+                    [this]{ return expr(); });
+                break;
             case Tag::GE:
+                exp = make_bool<Bool>(std::move(exp),
+                    [this]{ return expr(); });
+                break;
             case Tag{'>'}:
-                {
-                    auto op = std::move(tok_); move();
-                    return std::make_unique<Bool>(
-                        std::move(op), std::move(exp), expr());
-                }
-            default:
-                return exp;
+                exp = make_bool<Bool>(std::move(exp), 
+                    [this]{ return expr(); });
+                break;
         }
+
+        return exp;
     }
 
     std::unique_ptr<Expr> Parser::expr() {
@@ -537,9 +554,8 @@ namespace llvmc::parser {
 
         while(tok_ && ((*tok_ == Tag{'+'}) || (*tok_ == Tag{'-'}))) {
 
-            auto op = std::move(tok_); move();
-            exp = std::make_unique<Arith>(
-                std::move(op), std::move(exp), term());
+            exp = make_bool<Arith>(std::move(exp), 
+                [this]{ return term(); });
         }
 
         return exp;
@@ -551,9 +567,8 @@ namespace llvmc::parser {
 
         while(tok_ && ((*tok_ == Tag{'*'}) || (*tok_ == Tag{'/'}))) {
 
-            auto op = std::move(tok_); move();
-            exp = std::make_unique<Arith>(
-                std::move(op), std::move(exp), unary());
+            exp = make_bool<Arith>(std::move(exp), 
+                [this]{ return unary(); });
         }
 
         return exp;
@@ -586,9 +601,12 @@ namespace llvmc::parser {
         switch(*tok_) {
 
             case Tag{'('}:
+                ++depth_;
+                check_depth();
                 move();
                 exp = pbool();
                 match(Tag{')'});
+                --depth_;
                 return exp;
             case Tag::NUM:
                 exp = std::make_unique<FConstant>(
@@ -637,9 +655,12 @@ namespace llvmc::parser {
                     return LogErrorV("using of undeclared \'" + name + '\'');
                 }
             case Tag{'['}:
+                ++depth_;
+                check_depth();
                 move();
                 exp = std::make_unique<ArrayConstant>(expr_seq());
                 match(Tag{']'});
+                --depth_;
                 return exp;
             default:
                 move();
