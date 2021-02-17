@@ -11,6 +11,8 @@ namespace llvmc::parser {
 
         static inline unsigned err_num_ = 0;
         static inline unsigned ret_num_ = 0;
+        static inline unsigned depth_ = 0;
+        static constexpr inline unsigned max_depth_ = 1000;
         
         lexer::Lexer lex_;
         std::string path_;
@@ -19,6 +21,7 @@ namespace llvmc::parser {
 
         std::string get_output_name() const;
         void check_end();
+        void check_depth();
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
 

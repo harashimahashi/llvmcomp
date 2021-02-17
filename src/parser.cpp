@@ -60,6 +60,13 @@ namespace llvmc::parser {
                 "unexpected end of program" };
     }
 
+    void Parser::check_depth() {
+
+        if(depth_ >= max_depth_)
+            throw std::runtime_error{ 
+                "reached recursion limits" };
+    }
+
     void Parser::move() {
 
         tok_ = lex_.scan();
@@ -594,9 +601,12 @@ namespace llvmc::parser {
         switch(*tok_) {
 
             case Tag{'('}:
+                ++depth_;
+                check_depth();
                 move();
                 exp = pbool();
                 match(Tag{')'});
+                --depth_;
                 return exp;
             case Tag::NUM:
                 exp = std::make_unique<FConstant>(
@@ -645,9 +655,12 @@ namespace llvmc::parser {
                     return LogErrorV("using of undeclared \'" + name + '\'');
                 }
             case Tag{'['}:
+                ++depth_;
+                check_depth();
                 move();
                 exp = std::make_unique<ArrayConstant>(expr_seq());
                 match(Tag{']'});
+                --depth_;
                 return exp;
             default:
                 move();
