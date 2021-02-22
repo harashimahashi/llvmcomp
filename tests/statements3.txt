@@ -1,0 +1,23 @@
+fun foo()
+	let i = 0;
+	while i < 5
+		print(i)
+		i = i + 1
+	return i
+
+fun foo1()
+	let n = foo();
+	for let i = n downto i >= 0
+		print(i)
+	return 0
+
+fun foo2()
+	let i = 0;
+	repeat
+		print(i);
+		i = i + 1;
+	until i <= 5
+	return 0;
+	
+foo1();
+foo2()

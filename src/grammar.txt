@@ -1,0 +1,68 @@
+program -> fun_stmts
+fun_stmts -> fun_stmts fun_stmt 
+	| 
+fun_stmt -> fun_def 
+	| fun_call
+fun_call -> ID(expr_seq_opt)
+fun_def -> FUN ID(param_seq_opt) IDENT stmts DEIDENT
+param_seq_opt -> param_seq
+	|
+param_seq -> param_seq, ID
+	| ID
+stmts -> stmts stmt
+	| stmt
+stmt -> decls;
+	| assign;
+	| bool;
+	| if_stmt
+	| while_stmt
+	| repeat_until_stmt;
+	| for_stmt
+	| BREAK;
+	| RETURN bool;
+decls -> decl
+	| decl_init
+decl -> decl[NUM]
+	| LET ID
+decl_init -> decl = bool 
+assign -> access_expr = bool
+if_stmt -> IF bool IDENT stmts DEIDENT
+	| IF bool IDENT stmts DEIDENT ELSE IDENT stmts DEIDENT
+while_stmt -> WHILE bool IDENT stmts DEIDENT
+repeat_until_stmt -> REPEAT IDENT stmts DEIDENT UNTIL bool
+for_stmt -> FOR decl_init TO bool IDENT stmts DEIDENT
+	| FOR decl_init DOWNTO bool IDENT stmts DEIDENT
+bool -> bool || join
+	| join
+join -> join && equality
+	| equality
+equality -> equality == rel
+	| equality != rel
+	| rel
+rel -> expr < expr
+	| expr <= expr
+	| expr >= expr
+	| expr > expr
+	| expr
+expr -> expr + term
+	| expr - term
+	| term
+term -> term * unary
+	| term / unary
+	| unary
+unary -> !unary
+	| -unary
+	| factor
+factor -> (bool)
+ 	| NUM
+	| TRUE
+	| FALSE
+	| access_expr
+	| [expr_seq_opt]
+	| fun_call
+access_expr -> access_expr[bool]
+	| ID 
+expr_seq_opt -> expr_seq
+	|
+expr_seq -> expr_seq , bool
+	| bool
