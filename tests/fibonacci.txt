@@ -1,0 +1,19 @@
+fun fibonacci(n)
+	let a = 0;
+	let b = 1;
+	let tmp;
+	for let i = 0 to i < n
+		tmp = a;
+		a = b;
+		b = b + tmp;
+	return a;
+    
+fun fibNum(n)
+	let i = 0;
+	while(true)
+		if(n == fibonacci(i))
+			break
+		i = i + 1
+	return i
+	
+print(fibNum(13))

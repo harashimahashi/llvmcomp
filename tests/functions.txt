@@ -1,0 +1,9 @@
+fun foo(arg1)
+	print(arg1)
+	return 0
+	
+fun foo1()
+	return 0
+	
+print(foo(3))
+foo1()

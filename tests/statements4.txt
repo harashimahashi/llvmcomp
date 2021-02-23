@@ -1,0 +1,7 @@
+fun foo()
+	for let i = 0 to i <= 5
+		if i == 3
+			break
+		print(i)
+	return 0
+foo();

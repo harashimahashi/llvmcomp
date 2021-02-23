@@ -1,0 +1,8 @@
+fun foo()
+	let arr[2][3] = [[1, 2, 3], [4, 5, 6]];
+	for let i = 0 to i < 2
+		for let j = 0 to j < 3
+			print(arr[i][j]);
+	return 0
+
+foo()
