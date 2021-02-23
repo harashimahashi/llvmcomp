@@ -3,24 +3,21 @@
 #include "llvm/IR/Value.h"
 #include <llvmc/iinter.h>
 
-namespace llvmc {
+namespace llvmc::symbols {
 
-    namespace symbols {
+    class Env {
 
-        class Env {
+        std::unordered_map<std::string, std::shared_ptr<inter::Id>> table_;
+        std::shared_ptr<Env> prev_;
 
-            std::unordered_map<std::string, std::shared_ptr<inter::Id>> table_;
-            std::shared_ptr<Env> prev_;
+    public:
 
-        public:
+        Env(std::shared_ptr<Env>);
 
-            Env(std::shared_ptr<Env>);
+        void insert(std::string_view, std::shared_ptr<inter::Id>);
+        std::shared_ptr<inter::Id> get_current(std::string);
+        std::shared_ptr<inter::Id> get(std::string);
 
-            void insert(std::string, std::shared_ptr<inter::Id>);
-            std::shared_ptr<inter::Id> get(std::string);
-            std::shared_ptr<inter::Id> get_current(std::string);
-
-        };
-    }
+    };
 }
 #endif

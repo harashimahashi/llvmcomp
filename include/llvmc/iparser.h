@@ -5,14 +5,14 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 
-namespace llvmc {
+namespace llvmc::parser {
 
-    namespace parser {
-
-        class Parser {
+    class Parser {
 
         static inline unsigned err_num_ = 0;
         static inline unsigned ret_num_ = 0;
+        static inline unsigned depth_ = 0;
+        static constexpr inline unsigned max_depth_ = 1000;
         
         lexer::Lexer lex_;
         std::string path_;
@@ -21,8 +21,13 @@ namespace llvmc {
 
         std::string get_output_name() const;
         void check_end();
+        void check_depth();
         void move();
         std::unique_ptr<lexer::Token> match(lexer::Tag);
+
+        template<typename T, typename R, typename F>
+        R make_bool(R, F);
+
         void program_preinit();
         void program_postinit();
         void fun_stmts();
@@ -43,22 +48,21 @@ namespace llvmc {
         std::unique_ptr<inter::Expr> access(
             std::shared_ptr<inter::Id>);
         inter::ArrList expr_seq();
+    
+    public:
+
+        static inline llvm::LLVMContext Context;
+        static inline llvm::IRBuilder Builder{ Context };
+        static inline std::unique_ptr<llvm::Module> Module{ 
+            std::make_unique<llvm::Module>("module", Context) };
+        static inline llvm::DataLayout layout{ Module.get() };
+        static inline std::shared_ptr<symbols::Env> top = nullptr;
+
+        Parser(lexer::Lexer, std::string);
+
+        void program();
         
-        public:
-
-            static inline llvm::LLVMContext Context;
-            static inline llvm::IRBuilder Builder{ Context };
-            static inline std::unique_ptr<llvm::Module> Module{ 
-                std::make_unique<llvm::Module>("module", Context) };
-            static inline llvm::DataLayout layout{ Module.get() };
-            static inline std::shared_ptr<symbols::Env> top = nullptr;
-
-            Parser(lexer::Lexer, std::string);
-
-            void program();
-            
-            static std::nullptr_t LogErrorV(std::string);
-        };
-    }
+        static std::nullptr_t LogErrorV(std::string);
+    };
 }
 #endif
